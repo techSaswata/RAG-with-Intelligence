@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pymupdf
+groq
+hypothesis
+pytest
+pytest-asyncio
+supabase
+httpx
+tiktoken
+transformers
+pydantic
+python-multipart
+huggingface-hub
