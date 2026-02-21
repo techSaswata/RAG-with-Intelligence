@@ -44,6 +44,11 @@ export default function Home() {
   // API URL from environment variable or default to localhost
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
+  // Reset scroll position on mount to prevent browser restore clipping
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
   // Wake up backend on mount
   useEffect(() => {
     const wakeUpBackend = async () => {
@@ -393,21 +398,21 @@ export default function Home() {
   }[backendStatus]
 
   return (
-    <main className="relative h-screen bg-black text-slate-100">
+    <main className="fixed inset-0 bg-black text-slate-100">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-48 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-white/5 blur-[160px]" />
         <div className="absolute -bottom-32 right-[-10%] h-[420px] w-[420px] rounded-full bg-slate-200/5 blur-[160px]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,0,0,0.35)_0%,_rgba(0,0,0,0.98)_65%)]" />
       </div>
 
-      <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col gap-4 px-6 pt-4 pb-2">
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-800/60 bg-neutral-950/90 p-3 shadow-2xl shadow-black/60 backdrop-blur">
+      <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col gap-3 px-6 py-5">
+        <header className="shrink-0 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-800/60 bg-neutral-950/90 p-3 shadow-2xl shadow-black/60 backdrop-blur">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-900 text-xl font-semibold text-white shadow-lg shadow-black/60">
               CP
             </div>
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">ClearPath Studio</h1>
+              <h1 className="text-xl font-semibold tracking-tight">Vault</h1>
               <p className="text-sm text-slate-400">Conversational analytics and knowledge companion</p>
             </div>
           </div>
@@ -437,7 +442,7 @@ export default function Home() {
           </div>
         </header>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
           <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-800/60 bg-neutral-950/80 shadow-2xl shadow-black/70 backdrop-blur-xl">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/60 px-6 py-4">
               <div>
@@ -467,7 +472,7 @@ export default function Home() {
 
               {!isWakingUp && messages.length === 0 ? (
                 <div className="rounded-3xl border border-dashed border-slate-800/60 bg-neutral-950/70 px-8 py-10 text-center">
-                  <p className="text-lg font-semibold text-slate-100">Welcome to ClearPath Studio</p>
+                  <p className="text-lg font-semibold text-slate-100">Welcome to Vault</p>
                   <p className="text-sm text-slate-400">
                     Ask about onboarding, pricing, integrations, or operational policies.
                   </p>
@@ -477,7 +482,7 @@ export default function Home() {
                   <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className="max-w-[78%] space-y-2">
                       <p className="text-xs tracking-[0.08em] text-slate-400 font-mono">
-                        {message.role === 'user' ? 'You' : 'ClearPath'}
+                        {message.role === 'user' ? 'You' : 'Vault Support'}
                       </p>
                       <div
                         className={`rounded-2xl px-5 py-4 text-sm leading-relaxed shadow-lg ${

@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'ClearPath Chatbot',
-  description: 'Customer support chatbot for ClearPath project management tool',
+  title: 'Vault',
+  description: 'Customer support chatbot for Vault',
 }
 
 export default function RootLayout({
@@ -15,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="overflow-hidden">
       <body className={inter.className}>{children}</body>
     </html>
   )
