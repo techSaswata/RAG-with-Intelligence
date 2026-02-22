@@ -1,5 +1,6 @@
 """API request and response models for the ClearPath RAG Chatbot."""
 from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -55,3 +56,44 @@ class UploadResponse(BaseModel):
     total_chunks: int = Field(..., description="Total chunks created across all files")
     total_pages: int = Field(..., description="Total pages processed across all files")
     latency_ms: int = Field(..., description="Total processing time in milliseconds")
+
+
+# --- Video Semantic Search API models (separate from document RAG) ---
+
+
+class VideoUploadResponse(BaseModel):
+    """Response for POST /videos/upload (202 Accepted)."""
+    video_id: str = Field(..., description="Unique video identifier")
+    job_id: Optional[str] = Field(None, description="Processing job id if async")
+    message: str = Field(..., description="Status message")
+    original_filename: str = Field(..., description="Original file name")
+
+
+class VideoStatusResponse(BaseModel):
+    """Response for GET /videos/{video_id}/status."""
+    video_id: str
+    status: str = Field(..., description="pending | processing | processed | failed")
+    progress: Optional[float] = Field(None, description="0-1 if processing")
+    error: Optional[str] = Field(None, description="Error message if failed")
+
+
+class VideoSearchRequest(BaseModel):
+    """Request for POST /videos/search."""
+    query: str = Field(..., min_length=1, max_length=1000)
+    top_k: int = Field(10, ge=1, le=50)
+
+
+class VideoSearchResultItem(BaseModel):
+    """Single frame in video search results."""
+    frame_id: str
+    video_id: str
+    timestamp_sec: float
+    frame_path: str
+    thumbnail_url: str = Field(..., description="URL to fetch thumbnail image")
+    video_url: str = Field(..., description="URL to stream video for player")
+    similarity: float
+
+
+class VideoSearchResponse(BaseModel):
+    """Response for POST /videos/search."""
+    results: List["VideoSearchResultItem"] = Field(default_factory=list)

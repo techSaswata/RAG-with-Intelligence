@@ -2,7 +2,19 @@
 from .document import Document, Page
 from .chunk import Chunk, ScoredChunk
 from .conversation import Conversation, Turn
-from .api import QueryRequest, QueryResponse, ResponseMetadata, TokenUsage, Source
+from .api import (
+    QueryRequest,
+    QueryResponse,
+    ResponseMetadata,
+    TokenUsage,
+    Source,
+    VideoUploadResponse,
+    VideoStatusResponse,
+    VideoSearchRequest,
+    VideoSearchResultItem,
+    VideoSearchResponse,
+)
+from .video import VideoMetadata, FrameMetadata, VideoSearchResult
 
 __all__ = [
     "Document",
@@ -16,4 +28,12 @@ __all__ = [
     "ResponseMetadata",
     "TokenUsage",
     "Source",
+    "VideoMetadata",
+    "FrameMetadata",
+    "VideoSearchResult",
+    "VideoUploadResponse",
+    "VideoStatusResponse",
+    "VideoSearchRequest",
+    "VideoSearchResultItem",
+    "VideoSearchResponse",
 ]

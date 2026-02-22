@@ -13,3 +13,6 @@ transformers
 pydantic
 python-multipart
 huggingface-hub
+opencv-python-headless
+sentence-transformers
+pillow

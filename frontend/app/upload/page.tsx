@@ -251,12 +251,20 @@ export default function UploadPage() {
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
             <span className="text-sm">Back</span>
           </Link>
-          <Link
-            href="/ask"
-            className="rounded-xl border border-slate-800/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-400 transition hover:border-slate-600 hover:text-slate-200"
-          >
-            Ask Vault
-          </Link>
+          <div className="flex gap-3">
+            <Link
+              href="/videos"
+              className="rounded-xl border border-slate-800/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-400 transition hover:border-slate-600 hover:text-slate-200"
+            >
+              Videos
+            </Link>
+            <Link
+              href="/ask"
+              className="rounded-xl border border-slate-800/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-400 transition hover:border-slate-600 hover:text-slate-200"
+            >
+              Ask Vault
+            </Link>
+          </div>
         </nav>
 
         {/* ── Header ── */}

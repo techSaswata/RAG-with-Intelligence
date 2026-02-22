@@ -24,6 +24,31 @@ from services.embedding_model import EmbeddingModel
 from services.document_loader import DocumentLoader
 from services.chunking_engine import ChunkingEngine
 
+# Video semantic search (optional; isolated from document RAG)
+try:
+    from routers.video import router as video_router
+    from routers.video import set_video_services
+    from services.video import (
+        VideoUploadHandler,
+        VideoMetadataManager,
+        VideoVectorStore,
+        VideoSearchService,
+        process_video_pipeline,
+    )
+    from services.video.video_embedding_engine import get_video_embedding_engine
+    from config import (
+        VIDEO_MODE,
+        VIDEO_EMBEDDING_DIM,
+        VIDEO_FRAME_INTERVAL_SEC,
+        HUGGINGFACE_API_KEY,
+        VIDEO_LOCAL_EMBEDDING_MODEL,
+        VIDEO_SERVER_EMBEDDING_MODEL,
+    )
+    _VIDEO_AVAILABLE = True
+except Exception as e:
+    logging.getLogger(__name__).warning(f"Video semantic search not available: {e}")
+    _VIDEO_AVAILABLE = False
+
 # Initialize logging
 logger = logging.getLogger(__name__)
 
@@ -42,6 +67,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if _VIDEO_AVAILABLE:
+    app.include_router(video_router)
 
 # Initialize services (will be done on startup)
 model_router: ModelRouter = None
@@ -93,7 +121,44 @@ async def startup_event():
         
         routing_logger = RoutingLogger()
         logger.info("Initialized RoutingLogger")
-        
+
+        # Video semantic search (isolated from document RAG)
+        if _VIDEO_AVAILABLE:
+            try:
+                video_upload_handler = VideoUploadHandler()
+                video_metadata_manager = VideoMetadataManager()
+                video_vector_store = VideoVectorStore()
+                video_embedding_engine = get_video_embedding_engine(
+                    VIDEO_MODE,
+                    local_model=VIDEO_LOCAL_EMBEDDING_MODEL,
+                    server_model=VIDEO_SERVER_EMBEDDING_MODEL,
+                    api_key=HUGGINGFACE_API_KEY,
+                    dimension=VIDEO_EMBEDDING_DIM,
+                )
+                video_search_service = VideoSearchService(video_embedding_engine, video_vector_store)
+
+                def run_video_job(video_id: str):
+                    process_video_pipeline(
+                        video_id,
+                        frame_interval_sec=VIDEO_FRAME_INTERVAL_SEC,
+                        metadata_manager=video_metadata_manager,
+                        embedding_engine=video_embedding_engine,
+                        vector_store=video_vector_store,
+                        get_stored_path_fn=video_upload_handler.get_stored_path,
+                    )
+
+                set_video_services(
+                    upload_handler=video_upload_handler,
+                    metadata_manager=video_metadata_manager,
+                    vector_store=video_vector_store,
+                    search_service=video_search_service,
+                    base_url="",
+                    process_video_callable=run_video_job,
+                )
+                logger.info("Video semantic search services initialized")
+            except Exception as ve:
+                logger.warning(f"Video services init failed (video endpoints may return 503): {ve}")
+
         logger.info("All services initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize services: {e}", exc_info=True)
