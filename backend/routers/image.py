@@ -84,6 +84,7 @@ async def list_images(
     """List all uploaded images."""
     _require_auth(api_key or x_api_key)
     meta = _get_metadata_manager()
+    base = _base_url or ""
     images = meta.list_all_images()
     items = [
         ImageListItem(
@@ -91,6 +92,8 @@ async def list_images(
             original_filename=img.original_filename,
             status=img.status,
             file_size_bytes=img.file_size_bytes,
+            thumbnail_url=f"{base}/images/{img.image_id}/file" if base else f"/images/{img.image_id}/file",
+            image_url=f"{base}/images/{img.image_id}/file" if base else f"/images/{img.image_id}/file",
         )
         for img in images
     ]

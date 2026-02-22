@@ -13,8 +13,11 @@ interface ImageInfo {
   original_filename: string
   status: string
   file_size_bytes: number | null
+  thumbnail_url: string
+  image_url: string
 }
 
+/* ── Delete confirmation modal ── */
 function DeleteModal({
   item,
   onConfirm,
@@ -73,94 +76,67 @@ function DeleteModal({
   )
 }
 
-function ImageRow({
-  item,
-  onDelete,
+/* ── Image viewer modal (lightbox) ── */
+function ImagePreviewModal({
+  imageUrl,
+  filename,
+  isOpen,
+  onClose,
 }: {
-  item: ImageInfo
-  onDelete: () => void
+  imageUrl: string
+  filename: string
+  isOpen: boolean
+  onClose: () => void
 }) {
-  const statusBadge = () => {
-    switch (item.status) {
-      case 'processed':
-        return (
-          <span className="rounded-full border border-emerald-500/20 bg-emerald-500/[0.06] px-2.5 py-0.5 text-[10px] uppercase tracking-[0.15em] text-emerald-400">
-            Indexed
-          </span>
-        )
-      case 'processing':
-        return (
-          <span className="flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/[0.06] px-2.5 py-0.5 text-[10px] uppercase tracking-[0.15em] text-amber-400">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
-            Processing
-          </span>
-        )
-      case 'failed':
-        return (
-          <span className="rounded-full border border-rose-500/20 bg-rose-500/[0.06] px-2.5 py-0.5 text-[10px] uppercase tracking-[0.15em] text-rose-400">
-            Failed
-          </span>
-        )
-      default:
-        return (
-          <span className="rounded-full border border-slate-700/40 bg-slate-800/40 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.15em] text-slate-500">
-            Pending
-          </span>
-        )
-    }
-  }
+  if (!isOpen) return null
 
   return (
-    <div className="group flex items-center gap-4 rounded-2xl border border-slate-800/60 bg-neutral-950/80 px-5 py-4 transition-all duration-300 hover:border-slate-700/60">
-      {/* Image icon */}
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-950/40">
-        <svg className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
-        </svg>
-      </div>
-
-      {/* Info */}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-slate-200">{item.original_filename}</p>
-        <div className="mt-1 flex items-center gap-4 text-xs text-slate-500">
-          <span className="font-mono">{item.image_id.slice(0, 8)}…</span>
-          {item.file_size_bytes && (
-            <span>{(item.file_size_bytes / 1024 / 1024).toFixed(2)} MB</span>
-          )}
-        </div>
-      </div>
-
-      {/* Tags */}
-      <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
-        {statusBadge()}
-        <span className="rounded-full border border-slate-800/50 bg-neutral-900/60 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.1em] text-slate-500">
-          CLIP
-        </span>
-      </div>
-
-      {/* Delete button */}
-      <button
-        onClick={onDelete}
-        className="shrink-0 rounded-xl border border-transparent p-2 text-slate-600 transition-all duration-200 hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400"
-        title="Delete image"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
+      <div
+        className="relative max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-700/60 bg-neutral-950 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
       >
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-        </svg>
-      </button>
+        <button
+          onClick={onClose}
+          className="absolute -top-2 -right-2 z-10 rounded-full border border-slate-600 bg-slate-900 p-2 text-slate-300 hover:bg-slate-800 hover:text-white"
+          aria-label="Close"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <img src={imageUrl} alt={filename} className="max-h-[85vh] w-full object-contain" />
+        <p className="p-3 text-center text-xs text-slate-500">
+          {filename} — click outside to close
+        </p>
+      </div>
     </div>
   )
 }
 
+/* ── Manage images tab (grid cards) ── */
 function ManageImagesTab() {
   const [images, setImages] = useState<ImageInfo[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ImageInfo | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [preview, setPreview] = useState<{ imageUrl: string; filename: string } | null>(null)
 
   const headers: Record<string, string> = {}
   if (IMAGE_API_KEY) headers['X-Api-Key'] = IMAGE_API_KEY
+
+  const withApiKey = (url: string) => {
+    if (!IMAGE_API_KEY) return url
+    const joiner = url.includes('?') ? '&' : '?'
+    return `${url}${joiner}api_key=${encodeURIComponent(IMAGE_API_KEY)}`
+  }
+
+  const resolveUrl = (url: string) => {
+    if (!url) return ''
+    const full = url.startsWith('http') ? url : `${API_URL.replace(/\/$/, '')}${url}`
+    return withApiKey(full)
+  }
 
   const fetchImages = useCallback(async () => {
     try {
@@ -203,6 +179,36 @@ function ManageImagesTab() {
 
   const processedCount = images.filter((i) => i.status === 'processed').length
 
+  const statusBadge = (status: string) => {
+    switch (status) {
+      case 'processed':
+        return (
+          <span className="rounded-full border border-emerald-500/20 bg-emerald-500/[0.06] px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-emerald-400">
+            Indexed
+          </span>
+        )
+      case 'processing':
+        return (
+          <span className="flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/[0.06] px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-amber-400">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+            Processing
+          </span>
+        )
+      case 'failed':
+        return (
+          <span className="rounded-full border border-rose-500/20 bg-rose-500/[0.06] px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-rose-400">
+            Failed
+          </span>
+        )
+      default:
+        return (
+          <span className="rounded-full border border-slate-700/40 bg-slate-800/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.1em] text-slate-500">
+            Pending
+          </span>
+        )
+    }
+  }
+
   return (
     <>
       {deleteTarget && (
@@ -211,6 +217,14 @@ function ManageImagesTab() {
           onConfirm={handleDelete}
           onCancel={() => setDeleteTarget(null)}
           isDeleting={isDeleting}
+        />
+      )}
+      {preview && (
+        <ImagePreviewModal
+          imageUrl={preview.imageUrl}
+          filename={preview.filename}
+          isOpen
+          onClose={() => setPreview(null)}
         />
       )}
 
@@ -243,7 +257,7 @@ function ManageImagesTab() {
         </button>
       </div>
 
-      {/* List */}
+      {/* Content */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <svg className="mb-4 h-8 w-8 animate-spin text-slate-600" fill="none" viewBox="0 0 24 24">
@@ -278,13 +292,71 @@ function ManageImagesTab() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {images.map((img) => (
-            <ImageRow
+            <div
               key={img.image_id}
-              item={img}
-              onDelete={() => setDeleteTarget(img)}
-            />
+              className="group flex flex-col overflow-hidden rounded-xl border border-slate-800/60 bg-neutral-950/80 transition-all hover:border-slate-600 hover:shadow-lg hover:shadow-slate-900/50"
+            >
+              {/* Thumbnail / preview area */}
+              <button
+                type="button"
+                onClick={() =>
+                  setPreview({
+                    imageUrl: resolveUrl(img.image_url),
+                    filename: img.original_filename,
+                  })
+                }
+                className="relative aspect-square w-full overflow-hidden bg-slate-900"
+              >
+                <img
+                  src={resolveUrl(img.thumbnail_url)}
+                  alt={img.original_filename}
+                  className="h-full w-full object-cover transition group-hover:scale-105"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="%23334155"><rect width="200" height="200" fill="%230f172a"/><text x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%2374818e" font-size="12">No preview</text></svg>'
+                  }}
+                />
+                {/* Zoom overlay */}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/30">
+                  <div className="rounded-full bg-white/20 p-2.5 opacity-0 backdrop-blur-sm transition group-hover:opacity-100">
+                    <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
+                    </svg>
+                  </div>
+                </div>
+              </button>
+
+              {/* Info + actions */}
+              <div className="flex items-start gap-2 p-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-slate-200">{img.original_filename}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    {img.file_size_bytes && (
+                      <span className="text-[10px] text-slate-500">
+                        {(img.file_size_bytes / 1024 / 1024).toFixed(1)} MB
+                      </span>
+                    )}
+                    {statusBadge(img.status)}
+                  </div>
+                </div>
+                {/* Delete button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setDeleteTarget(img)
+                  }}
+                  className="shrink-0 rounded-lg border border-transparent p-1 text-slate-600 transition-all duration-200 hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400"
+                  title="Delete image"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       )}

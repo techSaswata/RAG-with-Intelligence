@@ -143,6 +143,8 @@ class ImageListItem(BaseModel):
     original_filename: str
     status: str
     file_size_bytes: Optional[int] = None
+    thumbnail_url: str = ""
+    image_url: str = ""
 
 
 class ImagesListResponse(BaseModel):
@@ -158,6 +160,8 @@ class VideoListItem(BaseModel):
     status: str
     file_size_bytes: Optional[int] = None
     frame_count: int = 0
+    thumbnail_url: str = ""
+    video_url: str = ""
 
 
 class VideosListResponse(BaseModel):

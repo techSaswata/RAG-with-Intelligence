@@ -94,10 +94,16 @@ async def list_videos(
     """List all uploaded videos."""
     _require_auth(api_key or x_api_key)
     meta = _get_metadata_manager()
+    base = _base_url or ""
     videos = meta.list_all_videos()
     items = []
     for v in videos:
         frame_count = meta.get_frame_count(v.video_id)
+        first_frame_id = meta.get_first_frame_id(v.video_id)
+        thumb = ""
+        if first_frame_id:
+            thumb = f"{base}/videos/frames/{first_frame_id}/thumbnail" if base else f"/videos/frames/{first_frame_id}/thumbnail"
+        video_url = f"{base}/videos/{v.video_id}/file" if base else f"/videos/{v.video_id}/file"
         items.append(
             VideoListItem(
                 video_id=v.video_id,
@@ -105,6 +111,8 @@ async def list_videos(
                 status=v.status,
                 file_size_bytes=v.file_size_bytes,
                 frame_count=frame_count,
+                thumbnail_url=thumb,
+                video_url=video_url,
             )
         )
     return VideosListResponse(videos=items, total_videos=len(items))

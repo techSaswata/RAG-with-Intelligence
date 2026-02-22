@@ -127,6 +127,20 @@ class VideoMetadataManager:
         r = self.client.table("video_frames").select("frame_id", count="exact").eq("video_id", video_id).execute()
         return r.count or 0
 
+    def get_first_frame_id(self, video_id: str) -> Optional[str]:
+        """Return the frame_id of the earliest frame for a video (for thumbnail)."""
+        r = (
+            self.client.table("video_frames")
+            .select("frame_id")
+            .eq("video_id", video_id)
+            .order("timestamp_sec", desc=False)
+            .limit(1)
+            .execute()
+        )
+        if r.data:
+            return r.data[0]["frame_id"]
+        return None
+
     def delete_video(self, video_id: str) -> None:
         """Delete video row; DB cascade deletes video_frames and video_frame_embeddings."""
         self.client.table("videos").delete().eq("video_id", video_id).execute()
