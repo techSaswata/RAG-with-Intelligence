@@ -217,10 +217,10 @@ class VectorStore:
     def count(self) -> int:
         """
         Get the total number of chunks in the vector store.
-        
+
         Returns:
             Number of chunks stored
-            
+
         Raises:
             RuntimeError: If database operation fails
         """
@@ -229,5 +229,78 @@ class VectorStore:
             return response.count if response.count is not None else 0
         except Exception as e:
             error_msg = f"Failed to count chunks in vector store: {str(e)}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+
+    def list_documents(self) -> List[dict]:
+        """
+        List all unique documents in the vector store with chunk counts and page ranges.
+
+        Returns:
+            List of dicts with keys: document_name, chunk_count, page_count
+        """
+        try:
+            response = (
+                self.client.table(self.table_name)
+                .select("document_name, page_number, chunk_id")
+                .execute()
+            )
+
+            docs: dict = {}
+            for row in response.data:
+                name = row["document_name"]
+                if name not in docs:
+                    docs[name] = {"pages": set(), "chunks": 0}
+                docs[name]["pages"].add(row["page_number"])
+                docs[name]["chunks"] += 1
+
+            result = []
+            for name, info in sorted(docs.items()):
+                result.append({
+                    "document_name": name,
+                    "chunk_count": info["chunks"],
+                    "page_count": len(info["pages"]),
+                })
+            return result
+
+        except Exception as e:
+            error_msg = f"Failed to list documents: {str(e)}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+
+    def delete_document(self, document_name: str) -> int:
+        """
+        Delete all chunks belonging to a specific document.
+
+        Args:
+            document_name: The document filename to delete
+
+        Returns:
+            Number of chunks deleted
+        """
+        try:
+            # First count how many chunks will be deleted
+            count_resp = (
+                self.client.table(self.table_name)
+                .select("chunk_id", count="exact")
+                .eq("document_name", document_name)
+                .execute()
+            )
+            deleted_count = count_resp.count if count_resp.count is not None else 0
+
+            if deleted_count == 0:
+                logger.warning(f"No chunks found for document: {document_name}")
+                return 0
+
+            # Delete all chunks for this document
+            self.client.table(self.table_name).delete().eq(
+                "document_name", document_name
+            ).execute()
+
+            logger.info(f"Deleted {deleted_count} chunks for document: {document_name}")
+            return deleted_count
+
+        except Exception as e:
+            error_msg = f"Failed to delete document '{document_name}': {str(e)}"
             logger.error(error_msg)
             raise RuntimeError(error_msg)

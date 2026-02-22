@@ -167,37 +167,48 @@ export default function Home() {
         ════════════════════════════════════════ */}
         <section className="relative flex min-h-screen flex-col items-center justify-center px-6 text-center">
           <RevealSection>
-            <p className="mb-4 text-xs uppercase tracking-[0.4em] text-slate-500">
-              Retrieval-Augmented Generation
-            </p>
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-slate-800/60 bg-neutral-950/80 px-4 py-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs uppercase tracking-[0.3em] text-slate-400">Vault &middot; RAG Pipeline</span>
+            </div>
           </RevealSection>
 
           <RevealSection delay={100}>
-            <h1 className="max-w-3xl text-5xl font-bold leading-[1.1] tracking-tight sm:text-6xl lg:text-7xl">
-              Intelligent
+            <h1 className="max-w-4xl text-5xl font-bold leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl">
+              Drop any PDF.
               <br />
               <span className="bg-gradient-to-r from-slate-200 via-slate-400 to-slate-600 bg-clip-text text-transparent">
-                RAG Pipeline
+                Ask it anything.
               </span>
             </h1>
           </RevealSection>
 
           <RevealSection delay={200}>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
-              A production-grade retrieval system that ingests PDFs, chunks with
-              contextual headers, embeds into pgvector, routes queries through a
-              deterministic classifier, and generates answers with real-time
-              quality evaluation.
+              PDFs get chunked with contextual headers, embedded into 768-d
+              vectors on pgvector, and retrieved with dynamic K-cutoff
             </p>
           </RevealSection>
 
           <RevealSection delay={300}>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href="/upload"
+                className="rounded-2xl border border-slate-700/60 bg-neutral-950/80 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
+              >
+                Upload
+              </Link>
               <Link
                 href="/ask"
                 className="rounded-2xl bg-slate-100 px-8 py-3 text-sm font-semibold text-black transition hover:bg-white hover:shadow-lg hover:shadow-white/10"
               >
                 Try it out
+              </Link>
+              <Link
+                href="/docs"
+                className="rounded-2xl border border-slate-700/60 bg-neutral-950/80 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
+              >
+                Docs
               </Link>
             </div>
           </RevealSection>
@@ -650,7 +661,7 @@ export default function Home() {
               title="Prompt Construction"
               subtitle="Multi-layer prompt with system instructions, context, and history"
               details={[
-                '1. System: ClearPath support assistant persona',
+                '1. System: knowledge assistant persona',
                 '2. Context: retrieved chunk texts (2–5 chunks)',
                 '3. History: last 3 conversation turns (multi-turn memory)',
                 '4. Current question + instruction suffix for grounded answers',
@@ -887,25 +898,40 @@ export default function Home() {
         <section className="flex flex-col items-center px-6 py-32 text-center">
           <ZoomSection>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              See it in action
+              See Vault in action
             </h2>
             <p className="mt-4 max-w-md text-sm text-slate-400">
-              Ask a question and watch the full pipeline execute — from embedding to
-              generation — with live telemetry on every response.
+              Upload a document, ask a question, and watch the full pipeline
+              execute — embedding, retrieval, generation — with live telemetry
+              on every response.
             </p>
-            <Link
-              href="/ask"
-              className="mt-8 inline-block rounded-2xl bg-slate-100 px-10 py-3.5 text-sm font-semibold text-black transition hover:bg-white hover:shadow-lg hover:shadow-white/10"
-            >
-              Launch Vault
-            </Link>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href="/upload"
+                className="rounded-2xl border border-slate-700/60 bg-neutral-950/80 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
+              >
+                Upload
+              </Link>
+              <Link
+                href="/ask"
+                className="rounded-2xl bg-slate-100 px-10 py-3.5 text-sm font-semibold text-black transition hover:bg-white hover:shadow-lg hover:shadow-white/10"
+              >
+                Launch Vault
+              </Link>
+              <Link
+                href="/docs"
+                className="rounded-2xl border border-slate-700/60 bg-neutral-950/80 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
+              >
+                Docs
+              </Link>
+            </div>
           </ZoomSection>
         </section>
 
         {/* ── Footer ── */}
         <footer className="border-t border-slate-800/40 px-6 py-8 text-center">
           <p className="text-xs text-slate-600">
-            Intelligent RAG Pipeline &middot; Built with FastAPI, Supabase pgvector, Groq, and Next.js
+            Vault &middot; Built with FastAPI, Supabase pgvector, Groq, and Next.js
           </p>
         </footer>
       </div>

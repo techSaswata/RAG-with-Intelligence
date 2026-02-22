@@ -129,10 +129,193 @@ function FileRow({ item, onRemove }: { item: UploadedFile; onRemove: () => void 
 // ══════════════════════════════════════════════
 //  UPLOAD PAGE
 // ══════════════════════════════════════════════
+// ── Pipeline steps for the processing overlay ──
+const PIPELINE_STEPS = [
+  { id: 'upload', label: 'Uploading PDF to server', detail: 'Streaming file bytes via multipart/form-data', icon: 'M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5', color: 'cyan' },
+  { id: 'extract', label: 'Extracting text from pages', detail: 'PyMuPDF fitz.open() → page.get_text() per page', icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z', color: 'rose' },
+  { id: 'headers', label: 'Injecting contextual headers', detail: 'Font-size analysis → H1 > 18pt, H2 > 14pt, H3 > 12pt', icon: 'M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12', color: 'amber' },
+  { id: 'chunk', label: 'Chunking into 300t segments', detail: 'Recursive split (¶ → sentence → word) with 50t overlap', icon: 'M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z', color: 'violet' },
+  { id: 'embed', label: 'Generating 768-d embeddings', detail: 'HuggingFace Inference API → all-mpnet-base-v2 batched', icon: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01', color: 'cyan' },
+  { id: 'store', label: 'Upserting into pgvector', detail: 'Supabase PostgreSQL → L2 distance index, batch of 10', icon: 'M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375', color: 'blue' },
+]
+
+const COLOR_MAP: Record<string, { bg: string; border: string; text: string; glow: string }> = {
+  cyan:   { bg: 'bg-cyan-500/10',   border: 'border-cyan-500/30',   text: 'text-cyan-400',   glow: 'shadow-cyan-500/20' },
+  rose:   { bg: 'bg-rose-500/10',   border: 'border-rose-500/30',   text: 'text-rose-400',   glow: 'shadow-rose-500/20' },
+  amber:  { bg: 'bg-amber-500/10',  border: 'border-amber-500/30',  text: 'text-amber-400',  glow: 'shadow-amber-500/20' },
+  violet: { bg: 'bg-violet-500/10', border: 'border-violet-500/30', text: 'text-violet-400', glow: 'shadow-violet-500/20' },
+  blue:   { bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   text: 'text-blue-400',   glow: 'shadow-blue-500/20' },
+}
+
+function ProcessingOverlay({ activeStep, fileCount }: { activeStep: number; fileCount: number }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center processing-overlay-enter">
+      {/* Heavy backdrop — multiple layers for density */}
+      <div className="absolute inset-0 bg-black/90 backdrop-blur-2xl" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60" />
+
+      {/* Ambient glow orbs behind the card */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-cyan-500/[0.06] blur-[200px]" />
+        <div className="absolute bottom-1/4 left-1/3 h-[300px] w-[300px] rounded-full bg-blue-500/[0.05] blur-[150px]" />
+        <div className="absolute top-1/2 right-1/4 h-[250px] w-[250px] rounded-full bg-violet-500/[0.04] blur-[140px]" />
+      </div>
+
+      {/* Animated scan line */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="processing-scan-line absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent shadow-[0_0_20px_4px_rgba(6,182,212,0.15)]" />
+      </div>
+
+      {/* Grid overlay for depth */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        backgroundImage: 'linear-gradient(rgba(148,163,184,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.03) 1px, transparent 1px)',
+        backgroundSize: '60px 60px',
+      }} />
+
+      {/* Floating particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {Array.from({ length: 16 }).map((_, i) => (
+          <div
+            key={i}
+            className="processing-particle absolute rounded-full"
+            style={{
+              width: `${2 + Math.random() * 4}px`,
+              height: `${2 + Math.random() * 4}px`,
+              left: `${5 + Math.random() * 90}%`,
+              top: `${5 + Math.random() * 90}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${3 + Math.random() * 5}s`,
+              background: i % 3 === 0 ? 'rgba(6,182,212,0.3)' : i % 3 === 1 ? 'rgba(139,92,246,0.25)' : 'rgba(59,130,246,0.25)',
+              boxShadow: `0 0 ${4 + Math.random() * 6}px currentColor`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Content card */}
+      <div className="relative z-10 mx-auto w-full max-w-lg px-6">
+        <div className="rounded-3xl border border-slate-700/50 bg-neutral-950/80 p-8 shadow-2xl shadow-black/50 backdrop-blur-sm">
+          {/* Subtle top border glow */}
+          <div className="absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-cyan-500/40 to-transparent" />
+
+          {/* Header */}
+          <div className="mb-7 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 shadow-lg shadow-cyan-500/20">
+              <svg className="h-6 w-6 text-cyan-400 processing-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M2.985 19.644l3.181-3.182" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold tracking-tight text-slate-100">Processing Pipeline</h2>
+            <p className="mt-1.5 text-xs text-slate-500">
+              Ingesting {fileCount} {fileCount === 1 ? 'document' : 'documents'} into vector store
+            </p>
+          </div>
+
+          {/* Pipeline steps */}
+          <div className="space-y-1.5">
+            {PIPELINE_STEPS.map((step, i) => {
+              const isActive = i === activeStep
+              const isDone = i < activeStep
+              const isPending = i > activeStep
+              const c = COLOR_MAP[step.color] || COLOR_MAP.cyan
+
+              return (
+                <div
+                  key={step.id}
+                  className={`relative flex items-start gap-3.5 rounded-xl border px-4 py-3 transition-all duration-500 ${
+                    isActive
+                      ? `${c.border} ${c.bg} shadow-lg ${c.glow}`
+                      : isDone
+                      ? 'border-emerald-500/20 bg-emerald-500/[0.06]'
+                      : 'border-slate-800/30 bg-neutral-900/40'
+                  } ${isPending ? 'opacity-35' : 'opacity-100'}`}
+                  style={{ transitionDelay: `${i * 50}ms` }}
+                >
+                  {/* Step indicator */}
+                  <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center">
+                    {isDone ? (
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 border border-emerald-500/40 processing-step-done">
+                        <svg className="h-3 w-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    ) : isActive ? (
+                      <div className={`flex h-5 w-5 items-center justify-center rounded-full ${c.bg} border ${c.border}`}>
+                        <div className={`h-2 w-2 rounded-full ${c.text} processing-active-dot`} style={{ backgroundColor: 'currentColor' }} />
+                      </div>
+                    ) : (
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-800/50">
+                        <span className="font-mono text-[9px] text-slate-700">{String(i + 1).padStart(2, '0')}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Icon */}
+                  <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-colors duration-300 ${
+                    isActive ? `${c.bg} ${c.text}` : isDone ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-700'
+                  }`}>
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d={step.icon} />
+                    </svg>
+                  </div>
+
+                  {/* Text */}
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-sm font-medium transition-colors duration-300 ${
+                      isActive ? 'text-slate-100' : isDone ? 'text-emerald-300/80' : 'text-slate-600'
+                    }`}>
+                      {step.label}
+                    </p>
+                    {(isActive || isDone) && (
+                      <p className={`mt-0.5 text-[11px] font-mono transition-colors duration-300 ${
+                        isActive ? 'text-slate-400' : 'text-slate-600'
+                      }`}>
+                        {step.detail}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Active indicator line */}
+                  {isActive && (
+                    <div className="absolute bottom-0 left-4 right-4 h-px overflow-hidden">
+                      <div className="h-full processing-progress-line" style={{ background: `linear-gradient(90deg, transparent, var(--tw-shadow-color, rgba(6,182,212,0.5)), transparent)` }} />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Bottom elapsed timer */}
+          <div className="mt-5 text-center">
+            <ElapsedTimer />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ElapsedTimer() {
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setElapsed(s => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [])
+  const mins = Math.floor(elapsed / 60)
+  const secs = elapsed % 60
+  return (
+    <p className="font-mono text-xs text-slate-600">
+      {mins > 0 ? `${mins}m ` : ''}{secs}s elapsed
+    </p>
+  )
+}
+
 export default function UploadPage() {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [isIngesting, setIsIngesting] = useState(false)
+  const [pipelineStep, setPipelineStep] = useState(-1)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const addFiles = useCallback((newFiles: FileList | File[]) => {
@@ -168,6 +351,23 @@ export default function UploadPage() {
       f.status === 'pending' ? { ...f, status: 'processing' as const, progress: 20 } : f
     ))
 
+    // Start pipeline step animation
+    setPipelineStep(0)
+
+    // Step progression — the backend processes all steps at once;
+    // we simulate the visual progression with timed advances
+    const stepTimings = [1200, 2500, 2000, 2500, 3500, 3000] // ms per step
+    let currentStep = 0
+    let stepTimer: ReturnType<typeof setTimeout>
+    const advanceStep = () => {
+      currentStep++
+      if (currentStep < PIPELINE_STEPS.length) {
+        setPipelineStep(currentStep)
+        stepTimer = setTimeout(advanceStep, stepTimings[currentStep] || 2500)
+      }
+    }
+    stepTimer = setTimeout(advanceStep, stepTimings[0])
+
     try {
       const formData = new FormData()
       for (const item of pendingFiles) {
@@ -187,12 +387,17 @@ export default function UploadPage() {
       })
 
       clearInterval(progressInterval)
+      clearTimeout(stepTimer)
 
       if (!response.ok) {
         throw new Error(`Upload failed: ${response.statusText}`)
       }
 
       const data = await response.json()
+
+      // Flash through remaining steps to completion
+      setPipelineStep(PIPELINE_STEPS.length)
+      await new Promise(r => setTimeout(r, 600))
 
       // Map results back to files
       setFiles(prev => prev.map(f => {
@@ -207,11 +412,14 @@ export default function UploadPage() {
       }))
     } catch (error) {
       console.error('Upload error:', error)
-      // Mark all processing as error
+      clearTimeout(stepTimer)
       setFiles(prev => prev.map(f =>
         f.status === 'processing' ? { ...f, status: 'error' as const, progress: 0 } : f
       ))
     } finally {
+      // Small delay before closing overlay for visual polish
+      await new Promise(r => setTimeout(r, 400))
+      setPipelineStep(-1)
       setIsIngesting(false)
     }
   }
@@ -238,6 +446,14 @@ export default function UploadPage() {
 
   return (
     <main className="relative min-h-screen bg-black text-slate-100 overflow-x-hidden">
+      {/* Processing overlay */}
+      {pipelineStep >= 0 && (
+        <ProcessingOverlay
+          activeStep={Math.min(pipelineStep, PIPELINE_STEPS.length - 1)}
+          fileCount={files.filter(f => f.status === 'processing' || f.status === 'done').length}
+        />
+      )}
+
       {/* Background glows */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute -top-32 left-1/2 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-cyan-500/[0.03] blur-[180px]" />

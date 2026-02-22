@@ -1,4 +1,4 @@
-"""Configuration management for ClearPath RAG Chatbot."""
+"""Configuration management for Intelligent RAG."""
 import os
 import logging
 from dotenv import load_dotenv

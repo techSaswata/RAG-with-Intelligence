@@ -1,4 +1,4 @@
-"""API request and response models for the ClearPath RAG Chatbot."""
+"""API request and response models for the Intelligent RAG pipeline."""
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
@@ -97,3 +97,24 @@ class VideoSearchResultItem(BaseModel):
 class VideoSearchResponse(BaseModel):
     """Response for POST /videos/search."""
     results: List["VideoSearchResultItem"] = Field(default_factory=list)
+
+
+class DocumentInfo(BaseModel):
+    """Info about a single document in the vector store."""
+    document_name: str = Field(..., description="Document filename")
+    chunk_count: int = Field(..., description="Number of chunks stored")
+    page_count: int = Field(..., description="Number of pages")
+
+
+class DocumentsListResponse(BaseModel):
+    """Response model for GET /documents endpoint."""
+    documents: List[DocumentInfo] = Field(..., description="All documents in the vector store")
+    total_documents: int = Field(..., description="Total number of documents")
+    total_chunks: int = Field(..., description="Total chunks across all documents")
+
+
+class DeleteDocumentResponse(BaseModel):
+    """Response model for DELETE /documents/{name} endpoint."""
+    document_name: str = Field(..., description="Deleted document name")
+    chunks_deleted: int = Field(..., description="Number of chunks removed")
+    status: str = Field(..., description="Deletion status")

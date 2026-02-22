@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -231,31 +232,18 @@ export default function AskPage() {
               if (data.type === 'token') {
                 // Update accumulated text
                 accumulatedText += data.content
-                console.log('Received token:', data.content, 'Total length:', accumulatedText.length)
 
-                // Update DOM directly for immediate visual feedback
-                if (streamingMessageRef.current) {
-                  streamingMessageRef.current.textContent = accumulatedText
-                  console.log('Updated DOM ref')
-                  // Force browser to paint the update
-                  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-                } else {
-                  console.log('Ref not available yet')
-                }
-
-                // Also update state periodically (every 10 tokens to reduce re-renders)
-                if (accumulatedText.length % 10 === 0) {
-                  setMessages(prev => {
-                    const newMessages = [...prev]
-                    if (newMessages[messageIndex]) {
-                      newMessages[messageIndex] = {
-                        role: 'assistant',
-                        content: accumulatedText
-                      }
+                // Update state frequently for markdown rendering
+                setMessages(prev => {
+                  const newMessages = [...prev]
+                  if (newMessages[messageIndex]) {
+                    newMessages[messageIndex] = {
+                      role: 'assistant',
+                      content: accumulatedText
                     }
-                    return newMessages
-                  })
-                }
+                  }
+                  return newMessages
+                })
               } else if (data.type === 'metadata') {
                 // Update metadata and sources
                 if (!conversationId) {
@@ -491,12 +479,16 @@ export default function AskPage() {
                             : 'border border-slate-800/80 bg-neutral-950/80 text-slate-100 shadow-black/70'
                         }`}
                       >
-                        <p
-                          className="whitespace-pre-wrap"
-                          ref={index === messages.length - 1 && message.role === 'assistant' ? streamingMessageRef : null}
-                        >
-                          {message.content}
-                        </p>
+                        {message.role === 'assistant' ? (
+                          <div
+                            className="prose-invert prose-sm max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-strong:text-white prose-headings:text-white prose-headings:mt-3 prose-headings:mb-1.5 prose-code:text-emerald-300 prose-code:bg-neutral-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-pre:bg-neutral-900 prose-pre:border prose-pre:border-slate-800/60 prose-pre:rounded-xl prose-a:text-blue-400 prose-blockquote:border-slate-700"
+                            ref={index === messages.length - 1 && isLoading ? streamingMessageRef : null}
+                          >
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap">{message.content}</p>
+                        )}
                       </div>
                     </div>
                   </div>

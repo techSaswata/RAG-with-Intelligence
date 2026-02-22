@@ -1,4 +1,4 @@
-"""Routing decision logger with complexity scoring for ClearPath RAG Chatbot."""
+"""Routing decision logger with complexity scoring for Intelligent RAG."""
 import json
 import logging
 from datetime import datetime, timezone

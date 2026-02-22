@@ -1,4 +1,4 @@
-"""Main entry point for ClearPath RAG Chatbot API."""
+"""Main entry point for Intelligent RAG API."""
 import logging
 import time
 import tempfile
@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from config import PORT, CORS_ORIGINS
-from models.api import QueryRequest, QueryResponse, ResponseMetadata, TokenUsage, Source, UploadResponse, UploadFileResult
+from models.api import QueryRequest, QueryResponse, ResponseMetadata, TokenUsage, Source, UploadResponse, UploadFileResult, DocumentsListResponse, DocumentInfo, DeleteDocumentResponse
 from models.chunk import Chunk, ScoredChunk
 from services.model_router import ModelRouter
 from services.retrieval_engine import RetrievalEngine
@@ -54,8 +54,8 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="ClearPath RAG Chatbot",
-    description="Customer support chatbot for ClearPath project management tool",
+    title="Intelligent RAG",
+    description="Document-agnostic RAG pipeline with intelligent retrieval and generation",
     version="1.0.0"
 )
 
@@ -91,7 +91,7 @@ async def startup_event():
     global conversation_manager, routing_logger, tiktoken_encoder
     global chunking_engine, vector_store_instance, embedding_model_instance
 
-    logger.info("Initializing ClearPath RAG Chatbot services...")
+    logger.info("Initializing Intelligent RAG services...")
 
     try:
         # Initialize tiktoken encoder for Llama 3 token counting
@@ -168,7 +168,7 @@ async def startup_event():
 @app.get("/")
 async def root():
     """Health check endpoint."""
-    return {"status": "ok", "message": "ClearPath RAG Chatbot API"}
+    return {"status": "ok", "message": "Intelligent RAG API"}
 
 
 @app.get("/health")
@@ -176,7 +176,7 @@ async def health():
     """Detailed health check."""
     return {
         "status": "healthy",
-        "service": "clearpath-rag-chatbot",
+        "service": "intelligent-rag",
         "version": "1.0.0"
     }
 @app.get("/wake")
@@ -191,7 +191,7 @@ async def wake():
 @app.post("/query", response_model=QueryResponse)
 async def query_endpoint(request: QueryRequest) -> QueryResponse:
     """
-    Main query endpoint for the ClearPath RAG Chatbot.
+    Main query endpoint for the Intelligent RAG pipeline.
     
     Processes user queries through the three-layer architecture:
     1. RAG Pipeline: Retrieves relevant document chunks
@@ -381,7 +381,7 @@ def _calculate_complexity_score(query: str, classification) -> dict:
 @app.post("/query/stream")
 async def query_stream_endpoint(request: QueryRequest):
     """
-    Streaming query endpoint for the ClearPath RAG Chatbot.
+    Streaming query endpoint for the Intelligent RAG pipeline.
 
     Processes user queries and streams the response as Server-Sent Events (SSE).
     Sends tokens progressively as they are generated, followed by final metadata.
@@ -688,7 +688,48 @@ async def upload_endpoint(files: List[UploadFile] = File(...)):
     )
 
 
+@app.get("/documents", response_model=DocumentsListResponse)
+async def list_documents():
+    """List all documents in the vector store with chunk/page counts."""
+    try:
+        docs = vector_store_instance.list_documents()
+        total_chunks = sum(d["chunk_count"] for d in docs)
+
+        return DocumentsListResponse(
+            documents=[DocumentInfo(**d) for d in docs],
+            total_documents=len(docs),
+            total_chunks=total_chunks,
+        )
+    except Exception as e:
+        logger.error(f"Failed to list documents: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/documents/{document_name}", response_model=DeleteDocumentResponse)
+async def delete_document(document_name: str):
+    """Delete all chunks for a specific document from the vector store."""
+    try:
+        deleted = vector_store_instance.delete_document(document_name)
+
+        if deleted == 0:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Document '{document_name}' not found",
+            )
+
+        return DeleteDocumentResponse(
+            document_name=document_name,
+            chunks_deleted=deleted,
+            status="deleted",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete document: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
-    logger.info(f"Starting ClearPath RAG Chatbot API on port {PORT}")
+    logger.info(f"Starting Intelligent RAG API on port {PORT}")
     uvicorn.run(app, host="0.0.0.0", port=PORT)

@@ -1,4 +1,4 @@
-"""Data models for ClearPath RAG Chatbot."""
+"""Data models for Intelligent RAG."""
 from .document import Document, Page
 from .chunk import Chunk, ScoredChunk
 from .conversation import Conversation, Turn
