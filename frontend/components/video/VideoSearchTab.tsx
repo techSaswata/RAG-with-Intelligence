@@ -43,7 +43,13 @@ export default function VideoSearchTab({ apiBaseUrl, apiKey }: VideoSearchTabPro
   }
 
   const openPlayer = (r: FrameResult) => {
-    const videoUrl = r.video_url.startsWith('http') ? r.video_url : `${apiBaseUrl.replace(/\/$/, '')}${r.video_url}`
+    let videoUrl = r.video_url.startsWith('http')
+      ? r.video_url
+      : `${apiBaseUrl.replace(/\/$/, '')}${r.video_url}`
+    if (apiKey) {
+      const joiner = videoUrl.includes('?') ? '&' : '?'
+      videoUrl = `${videoUrl}${joiner}api_key=${encodeURIComponent(apiKey)}`
+    }
     setPlayer({ videoUrl, timestampSec: r.timestamp_sec })
   }
 

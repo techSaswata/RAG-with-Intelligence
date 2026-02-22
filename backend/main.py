@@ -43,6 +43,7 @@ try:
         HUGGINGFACE_API_KEY,
         VIDEO_LOCAL_EMBEDDING_MODEL,
         VIDEO_SERVER_EMBEDDING_MODEL,
+        VIDEO_SERVER_FALLBACK_TO_LOCAL,
     )
     _VIDEO_AVAILABLE = True
 except Exception as e:
@@ -134,6 +135,7 @@ async def startup_event():
                     server_model=VIDEO_SERVER_EMBEDDING_MODEL,
                     api_key=HUGGINGFACE_API_KEY,
                     dimension=VIDEO_EMBEDDING_DIM,
+                    fallback_to_local=VIDEO_SERVER_FALLBACK_TO_LOCAL,
                 )
                 video_search_service = VideoSearchService(video_embedding_engine, video_vector_store)
 

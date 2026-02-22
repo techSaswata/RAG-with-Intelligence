@@ -3,7 +3,7 @@ import logging
 import os
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile, Header
 from fastapi.responses import FileResponse
 
 from config import VIDEO_API_KEY
@@ -79,10 +79,11 @@ def _get_search_service() -> VideoSearchService:
 async def video_upload(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    x_api_key: Optional[str] = None,
+    x_api_key: Optional[str] = Header(default=None),
+    api_key: Optional[str] = None,
 ):
     """Upload a video. Returns 202 with video_id; processing runs in background."""
-    _require_auth(x_api_key)
+    _require_auth(api_key or x_api_key)
     handler = _get_upload_handler()
     if not file.filename:
         raise HTTPException(status_code=400, detail="Missing filename")
@@ -107,9 +108,10 @@ async def video_upload(
 @router.get("/{video_id}/status", response_model=VideoStatusResponse)
 async def video_status(
     video_id: str,
-    x_api_key: Optional[str] = None,
+    x_api_key: Optional[str] = Header(default=None),
+    api_key: Optional[str] = None,
 ):
-    _require_auth(x_api_key)
+    _require_auth(api_key or x_api_key)
     meta = _get_metadata_manager()
     v = meta.get_video(video_id)
     if not v:
@@ -125,9 +127,10 @@ async def video_status(
 @router.post("/search", response_model=VideoSearchResponse)
 async def video_search(
     body: VideoSearchRequest,
-    x_api_key: Optional[str] = None,
+    x_api_key: Optional[str] = Header(default=None),
+    api_key: Optional[str] = None,
 ):
-    _require_auth(x_api_key)
+    _require_auth(api_key or x_api_key)
     svc = _get_search_service()
     try:
         rows = svc.search(query=body.query, top_k=body.top_k)
@@ -155,9 +158,10 @@ async def video_search(
 @router.get("/frames/{frame_id}/thumbnail")
 async def frame_thumbnail(
     frame_id: str,
-    x_api_key: Optional[str] = None,
+    x_api_key: Optional[str] = Header(default=None),
+    api_key: Optional[str] = None,
 ):
-    _require_auth(x_api_key)
+    _require_auth(api_key or x_api_key)
     meta = _get_metadata_manager()
     frame = meta.get_frame(frame_id)
     if not frame or not os.path.isfile(frame.frame_path):
@@ -171,9 +175,10 @@ async def frame_thumbnail(
 @router.get("/{video_id}/file")
 async def video_file(
     video_id: str,
-    x_api_key: Optional[str] = None,
+    x_api_key: Optional[str] = Header(default=None),
+    api_key: Optional[str] = None,
 ):
-    _require_auth(x_api_key)
+    _require_auth(api_key or x_api_key)
     handler = _get_upload_handler()
     try:
         path = handler.get_stored_path(video_id)
@@ -191,9 +196,10 @@ async def video_file(
 @router.delete("/{video_id}")
 async def video_delete(
     video_id: str,
-    x_api_key: Optional[str] = None,
+    x_api_key: Optional[str] = Header(default=None),
+    api_key: Optional[str] = None,
 ):
-    _require_auth(x_api_key)
+    _require_auth(api_key or x_api_key)
     meta = _get_metadata_manager()
     v = meta.get_video(video_id)
     if not v:

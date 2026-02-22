@@ -46,7 +46,15 @@ class LocalVideoEmbeddingEngine(VideoEmbeddingEngine):
         logger.info(f"Initialized LocalVideoEmbeddingEngine with {model_name}, dim={self._dim}")
 
     def embed_image(self, image_path: str) -> List[float]:
-        return self._model.encode(image_path, convert_to_numpy=True).tolist()
+        try:
+            from PIL import Image
+        except ImportError:
+            raise RuntimeError(
+                "Pillow is required for local video embeddings. Install with: pip install pillow"
+            )
+        with Image.open(image_path) as img:
+            img = img.convert("RGB")
+            return self._model.encode(img, convert_to_numpy=True).tolist()
 
     def embed_text(self, text: str) -> List[float]:
         return self._model.encode(text, convert_to_numpy=True).tolist()
@@ -112,6 +120,46 @@ class ServerVideoEmbeddingEngine(VideoEmbeddingEngine):
         return self._dim
 
 
+class FallbackVideoEmbeddingEngine(VideoEmbeddingEngine):
+    """Try primary engine; fall back to a secondary engine on retryable failures."""
+
+    def __init__(self, primary: VideoEmbeddingEngine, fallback: VideoEmbeddingEngine):
+        self._primary = primary
+        self._fallback = fallback
+
+    def embed_image(self, image_path: str) -> List[float]:
+        try:
+            return self._primary.embed_image(image_path)
+        except Exception as e:
+            if _should_fallback(e):
+                logger.warning("Primary video image embedding failed; falling back to local engine: %s", e)
+                return self._fallback.embed_image(image_path)
+            raise
+
+    def embed_text(self, text: str) -> List[float]:
+        try:
+            return self._primary.embed_text(text)
+        except Exception as e:
+            if _should_fallback(e):
+                logger.warning("Primary video text embedding failed; falling back to local engine: %s", e)
+                return self._fallback.embed_text(text)
+            raise
+
+    def dimension(self) -> int:
+        return self._primary.dimension()
+
+
+def _should_fallback(error: Exception) -> bool:
+    try:
+        import httpx
+    except ImportError:
+        return False
+    if isinstance(error, httpx.HTTPStatusError):
+        status = error.response.status_code
+        return status in {404, 410, 503}
+    return False
+
+
 def get_video_embedding_engine(mode: str, **kwargs) -> VideoEmbeddingEngine:
     """Factory: return Local or Server engine based on VIDEO_MODE."""
     mode = (mode or "server").lower()
@@ -122,10 +170,18 @@ def get_video_embedding_engine(mode: str, **kwargs) -> VideoEmbeddingEngine:
         api_key = kwargs.get("api_key") or ""
         if not api_key:
             raise ValueError("Server mode requires HUGGINGFACE_API_KEY (or api_key) for video embeddings")
-        return ServerVideoEmbeddingEngine(
+        server_engine = ServerVideoEmbeddingEngine(
             api_key=api_key,
             model_name=kwargs.get("server_model") or "sentence-transformers/clip-ViT-B-32",
             dimension=kwargs.get("dimension", 512),
             timeout=kwargs.get("timeout", 60.0),
         )
+        if kwargs.get("fallback_to_local", True):
+            try:
+                local_model = kwargs.get("local_model") or "sentence-transformers/clip-ViT-B-32"
+                local_engine = LocalVideoEmbeddingEngine(model_name=local_model)
+                return FallbackVideoEmbeddingEngine(server_engine, local_engine)
+            except Exception as e:
+                logger.warning("Local fallback disabled (init failed): %s", e)
+        return server_engine
     raise ValueError(f"Unknown VIDEO_MODE: {mode}. Use 'local' or 'server'.")

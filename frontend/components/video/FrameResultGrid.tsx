@@ -24,8 +24,18 @@ export default function FrameResultGrid({
   apiBaseUrl,
   apiKey,
 }: FrameResultGridProps) {
-  const thumbSrc = (r: FrameResult) =>
-    r.thumbnail_url.startsWith('http') ? r.thumbnail_url : `${apiBaseUrl.replace(/\/$/, '')}${r.thumbnail_url}`
+  const withApiKey = (url: string) => {
+    if (!apiKey) return url
+    const joiner = url.includes('?') ? '&' : '?'
+    return `${url}${joiner}api_key=${encodeURIComponent(apiKey)}`
+  }
+
+  const thumbSrc = (r: FrameResult) => {
+    const url = r.thumbnail_url.startsWith('http')
+      ? r.thumbnail_url
+      : `${apiBaseUrl.replace(/\/$/, '')}${r.thumbnail_url}`
+    return withApiKey(url)
+  }
 
   if (results.length === 0) {
     return (
@@ -34,9 +44,6 @@ export default function FrameResultGrid({
       </div>
     )
   }
-
-  const headers: Record<string, string> = {}
-  if (apiKey) headers['X-Api-Key'] = apiKey
 
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">

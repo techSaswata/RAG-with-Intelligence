@@ -64,4 +64,4 @@ def process_video_pipeline(
             )
         except Exception:
             pass
-        raise
+        return

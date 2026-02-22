@@ -48,6 +48,8 @@ VIDEO_ALLOWED_EXTENSIONS = (".mp4", ".mov", ".mkv")
 VIDEO_LOCAL_EMBEDDING_MODEL = os.getenv("VIDEO_LOCAL_EMBEDDING_MODEL", "sentence-transformers/clip-ViT-B-32")
 # Video embedding: Server mode uses HUGGINGFACE_API_KEY + HF inference image model
 VIDEO_SERVER_EMBEDDING_MODEL = os.getenv("VIDEO_SERVER_EMBEDDING_MODEL", "sentence-transformers/clip-ViT-B-32")
+# If server embedding fails, optionally fall back to local model
+VIDEO_SERVER_FALLBACK_TO_LOCAL = os.getenv("VIDEO_SERVER_FALLBACK_TO_LOCAL", "true").lower() in {"1", "true", "yes"}
 
 # Optional: require API key for video endpoints (set VIDEO_API_KEY to enable)
 VIDEO_API_KEY = os.getenv("VIDEO_API_KEY", "")

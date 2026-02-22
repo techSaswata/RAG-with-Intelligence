@@ -175,18 +175,19 @@ export default function Home() {
 
           <RevealSection delay={100}>
             <h1 className="max-w-4xl text-5xl font-bold leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl">
-              Drop any PDF.
+              PDFs and Videos.
               <br />
               <span className="bg-gradient-to-r from-slate-200 via-slate-400 to-slate-600 bg-clip-text text-transparent">
-                Ask it anything.
+                One search to query both.
               </span>
             </h1>
           </RevealSection>
 
           <RevealSection delay={200}>
             <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
-              PDFs get chunked with contextual headers, embedded into 768-d
-              vectors on pgvector, and retrieved with dynamic K-cutoff
+              Documents get chunked with contextual headers and embedded into
+              768-d vectors. Videos get frame-extracted and CLIP-embedded into
+              512-d vectors. Both land in pgvector — searchable in seconds.
             </p>
           </RevealSection>
 
@@ -203,6 +204,12 @@ export default function Home() {
                 className="rounded-2xl bg-slate-100 px-8 py-3 text-sm font-semibold text-black transition hover:bg-white hover:shadow-lg hover:shadow-white/10"
               >
                 Try it out
+              </Link>
+              <Link
+                href="/videos"
+                className="rounded-2xl border border-slate-700/60 bg-neutral-950/80 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
+              >
+                Videos
               </Link>
               <Link
                 href="/docs"
@@ -230,12 +237,13 @@ export default function Home() {
         {/* ════════════════════════════════════════
             METRICS BAR
         ════════════════════════════════════════ */}
-        <section className="mx-auto max-w-5xl px-6 py-16">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Metric label="Embedding Dim" value="768" delay={0} />
-            <Metric label="Chunk Size" value="300t" delay={80} />
-            <Metric label="Vector Store" value="pgvec" delay={160} />
-            <Metric label="Avg Latency" value="~2.7s" delay={240} />
+        <section className="mx-auto max-w-6xl px-6 py-16">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <Metric label="Text Embed" value="768-d" delay={0} />
+            <Metric label="Video Embed" value="512-d" delay={60} />
+            <Metric label="Chunk Size" value="300t" delay={120} />
+            <Metric label="Frame Rate" value="1fps" delay={180} />
+            <Metric label="Vector Store" value="pgvec" delay={240} />
           </div>
         </section>
 
@@ -249,9 +257,9 @@ export default function Home() {
               End-to-End Architecture
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-400">
-              A query travels through 10 orchestrated stages — from embedding and vector
-              retrieval to deterministic routing, LLM generation, and real-time quality
-              evaluation — all within a single async request cycle.
+              Two parallel pipelines — document RAG and video semantic search — share
+              the same pgvector backbone. Text queries flow through 10 orchestrated stages;
+              video queries match frames via CLIP in a separate 5-stage pipeline.
             </p>
           </RevealSection>
 
@@ -701,6 +709,94 @@ export default function Home() {
         </section>
 
         {/* ════════════════════════════════════════
+            VIDEO SEMANTIC SEARCH
+        ════════════════════════════════════════ */}
+        <section className="mx-auto max-w-5xl px-6 py-20">
+          <RevealSection>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Phase 3</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+              Video Semantic Search
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-400">
+              A parallel pipeline for video content. Upload an MP4, MOV, or MKV &mdash;
+              frames are extracted, embedded with CLIP into 512-d vectors, and stored
+              in pgvector. Search any video by natural language to find the exact frame.
+            </p>
+          </RevealSection>
+
+          <div className="mt-12 space-y-0">
+            <StageCard
+              number="11"
+              title="Video Upload & Validation"
+              subtitle="File validation, sanitization, and async job dispatch"
+              details={[
+                'Accepts MP4, MOV, MKV — up to 500 MB per file',
+                'Filename sanitized against path traversal attacks',
+                'Returns 202 Accepted with video_id and job_id immediately',
+                'Background processing job handles the heavy lifting',
+              ]}
+              tags={['500 MB', 'Async', '202 Accepted']}
+            />
+            <FlowArrow />
+            <StageCard
+              number="12"
+              title="Frame Extraction"
+              subtitle="OpenCV extracts frames at configurable intervals"
+              details={[
+                'Default: 1 frame per second across the entire video',
+                'Each frame saved as JPEG in {video_id}/frames/ directory',
+                'Tracks timestamp (seconds) for seek-to-frame playback',
+                'Configurable interval via VIDEO_FRAME_INTERVAL_SEC',
+              ]}
+              tags={['OpenCV', '1 fps', 'JPEG']}
+              delay={80}
+            />
+            <FlowArrow />
+            <StageCard
+              number="13"
+              title="CLIP Embedding"
+              subtitle="Frames embedded with clip-ViT-B-32 into 512-d vectors"
+              details={[
+                'Two modes: local (sentence-transformers) or server (HuggingFace API)',
+                'Automatic fallback from server to local on API failure',
+                'CLIP aligns image and text in the same vector space',
+                'Enables text-to-image search: "red car on highway" finds that frame',
+              ]}
+              tags={['CLIP', '512-d', 'ViT-B-32']}
+              delay={160}
+            />
+            <FlowArrow />
+            <StageCard
+              number="14"
+              title="Frame Vector Storage"
+              subtitle="Supabase pgvector with HNSW index for fast similarity search"
+              details={[
+                'Separate table: video_frame_embeddings with vector(512)',
+                'HNSW index for sub-linear search over millions of frames',
+                'RPC function: match_video_frames() with cosine distance',
+                'Cascade delete: removing a video drops all frames + embeddings',
+              ]}
+              tags={['pgvector', 'HNSW', 'Cosine']}
+              delay={240}
+            />
+            <FlowArrow />
+            <StageCard
+              number="15"
+              title="Natural Language Frame Search"
+              subtitle="Type a query, find the exact video moment"
+              details={[
+                'Query text embedded with CLIP into the same 512-d space',
+                'Cosine similarity ranks frames by semantic relevance',
+                'Results include thumbnail, timestamp, similarity score',
+                'Click a result to open the video player seeked to that frame',
+              ]}
+              tags={['Text→Image', 'Seek-to-Frame', 'top_k']}
+              delay={320}
+            />
+          </div>
+        </section>
+
+        {/* ════════════════════════════════════════
             TECH STACK
         ════════════════════════════════════════ */}
         <section className="mx-auto max-w-5xl px-6 py-20">
@@ -715,8 +811,10 @@ export default function Home() {
             {[
               { name: 'FastAPI', role: 'API Gateway', detail: 'Async ASGI with Uvicorn' },
               { name: 'PyMuPDF', role: 'PDF Processing', detail: 'Page extraction + font metadata' },
-              { name: 'HuggingFace', role: 'Embeddings', detail: 'all-mpnet-base-v2 (768-d)' },
-              { name: 'Supabase', role: 'Vector Store', detail: 'PostgreSQL + pgvector extension' },
+              { name: 'HuggingFace', role: 'Text Embeddings', detail: 'all-mpnet-base-v2 (768-d)' },
+              { name: 'OpenCV', role: 'Frame Extraction', detail: 'Video → JPEG frames at 1 fps' },
+              { name: 'CLIP ViT-B-32', role: 'Video Embeddings', detail: 'Image + text aligned (512-d)' },
+              { name: 'Supabase', role: 'Vector Store', detail: 'pgvector with HNSW index' },
               { name: 'Groq', role: 'LLM Inference', detail: 'Llama 3.1 8B & 3.3 70B' },
               { name: 'tiktoken', role: 'Token Counting', detail: 'o200k_base encoding' },
               { name: 'Next.js', role: 'Frontend', detail: 'React with Tailwind CSS' },
@@ -760,7 +858,10 @@ export default function Home() {
                     {[
                       ['Chunk Size', '300 tokens', 'Context granularity per chunk'],
                       ['Chunk Overlap', '50 tokens', 'Continuity between adjacent chunks'],
-                      ['Embedding Dim', '768', 'all-mpnet-base-v2 vector output'],
+                      ['Text Embed Dim', '768', 'all-mpnet-base-v2 vector output'],
+                      ['Video Embed Dim', '512', 'CLIP ViT-B-32 vector output'],
+                      ['Frame Interval', '1.0s', 'Extract 1 frame per second'],
+                      ['Max Video Size', '500 MB', 'Upload file size limit'],
                       ['Retrieval top_k', '5', 'Max chunks from vector search'],
                       ['Relevance Threshold', '0.2', 'Min similarity score to keep'],
                       ['Dynamic K-Cutoff', '0.8×', 'Adaptive filtering multiplier'],
@@ -901,9 +1002,9 @@ export default function Home() {
               See Vault in action
             </h2>
             <p className="mt-4 max-w-md text-sm text-slate-400">
-              Upload a document, ask a question, and watch the full pipeline
-              execute — embedding, retrieval, generation — with live telemetry
-              on every response.
+              Upload a PDF or video, ask a question, and watch both pipelines
+              execute — text chunks and video frames, embedded and retrieved
+              with live telemetry on every response.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link
@@ -917,6 +1018,12 @@ export default function Home() {
                 className="rounded-2xl bg-slate-100 px-10 py-3.5 text-sm font-semibold text-black transition hover:bg-white hover:shadow-lg hover:shadow-white/10"
               >
                 Launch Vault
+              </Link>
+              <Link
+                href="/videos"
+                className="rounded-2xl border border-slate-700/60 bg-neutral-950/80 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
+              >
+                Videos
               </Link>
               <Link
                 href="/docs"
