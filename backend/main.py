@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from config import PORT, CORS_ORIGINS
+from config import PORT, CORS_ORIGINS, CORS_ALLOW_ORIGIN_REGEX
 from models.api import QueryRequest, QueryResponse, ResponseMetadata, TokenUsage, Source, UploadResponse, UploadFileResult, DocumentsListResponse, DocumentInfo, DeleteDocumentResponse
 from models.chunk import Chunk, ScoredChunk
 from services.model_router import ModelRouter
@@ -94,6 +94,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,  # Load from environment variable
+    allow_origin_regex=CORS_ALLOW_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

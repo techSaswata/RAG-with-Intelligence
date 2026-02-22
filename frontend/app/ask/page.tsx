@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
+import ApiMissingNotice from '@/components/ApiMissingNotice'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -43,8 +44,8 @@ export default function AskPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const streamingMessageRef = useRef<HTMLDivElement>(null)
 
-  // API URL from environment variable or default to localhost
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  // API URL from environment variable
+  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 
   // Reset scroll position on mount to prevent browser restore clipping
   useEffect(() => {
@@ -53,6 +54,10 @@ export default function AskPage() {
 
   // Wake up backend on mount
   useEffect(() => {
+    if (!API_URL) {
+      return
+    }
+
     const wakeUpBackend = async () => {
       try {
         setIsWakingUp(true)
@@ -385,6 +390,10 @@ export default function AskPage() {
       classes: 'border-slate-400/20 bg-slate-500/10 text-slate-200'
     }
   }[backendStatus]
+
+  if (!API_URL) {
+    return <ApiMissingNotice />
+  }
 
   return (
     <main className="fixed inset-0 bg-black text-slate-100">

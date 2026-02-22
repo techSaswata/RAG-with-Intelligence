@@ -5,8 +5,9 @@ import Link from 'next/link'
 import VideoUpload from '@/components/video/VideoUpload'
 import VideoSearchTab from '@/components/video/VideoSearchTab'
 import VideoImageSearchTab from '@/components/video/VideoImageSearchTab'
+import ApiMissingNotice from '@/components/ApiMissingNotice'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 const VIDEO_API_KEY = process.env.NEXT_PUBLIC_VIDEO_API_KEY || ''
 
 interface VideoInfo {
@@ -399,6 +400,10 @@ function ManageVideosTab() {
 
 export default function VideosPage() {
   const [tab, setTab] = useState<'upload' | 'search' | 'image' | 'manage'>('upload')
+
+  if (!API_URL) {
+    return <ApiMissingNotice />
+  }
 
   return (
     <main className="relative min-h-screen bg-black text-slate-100 overflow-x-hidden">

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import ApiMissingNotice from '@/components/ApiMissingNotice'
 
 // ── Reuse scroll reveal from landing page ──
 function useScrollReveal() {
@@ -335,9 +336,13 @@ export default function UploadPage() {
 
   const clearAll = () => setFiles([])
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 
   const startIngestion = async () => {
+    if (!API_URL) {
+      return
+    }
+
     setIsIngesting(true)
 
     const pendingFiles = files.filter(f => f.status === 'pending')
@@ -443,6 +448,10 @@ export default function UploadPage() {
 
   const pendingCount = files.filter(f => f.status === 'pending').length
   const doneCount = files.filter(f => f.status === 'done').length
+
+  if (!API_URL) {
+    return <ApiMissingNotice />
+  }
 
   return (
     <main className="relative min-h-screen bg-black text-slate-100 overflow-x-hidden">

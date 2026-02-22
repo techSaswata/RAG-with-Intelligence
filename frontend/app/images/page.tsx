@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import ImageUpload from '@/components/image/ImageUpload'
 import ImageSearchTab from '@/components/image/ImageSearchTab'
+import ApiMissingNotice from '@/components/ApiMissingNotice'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 const IMAGE_API_KEY = process.env.NEXT_PUBLIC_IMAGE_API_KEY || ''
 
 interface ImageInfo {
@@ -366,6 +367,10 @@ function ManageImagesTab() {
 
 export default function ImagesPage() {
   const [tab, setTab] = useState<'upload' | 'search' | 'manage'>('upload')
+
+  if (!API_URL) {
+    return <ApiMissingNotice />
+  }
 
   return (
     <main className="relative min-h-screen bg-black text-slate-100 overflow-x-hidden">

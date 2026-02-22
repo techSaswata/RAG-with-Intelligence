@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
+import ApiMissingNotice from '@/components/ApiMissingNotice'
 
 // ── Reuse scroll reveal from landing page ──
 function useScrollReveal() {
@@ -190,9 +191,15 @@ export default function DocsPage() {
   const [deleteTarget, setDeleteTarget] = useState<DocumentInfo | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 
   const fetchDocuments = useCallback(async () => {
+    if (!API_URL) {
+      setError('Missing API URL. Configure NEXT_PUBLIC_API_URL.')
+      setIsLoading(false)
+      return
+    }
+
     try {
       setError(null)
       const response = await fetch(`${API_URL}/documents`)
@@ -211,6 +218,10 @@ export default function DocsPage() {
   useEffect(() => {
     fetchDocuments()
   }, [fetchDocuments])
+
+  if (!API_URL) {
+    return <ApiMissingNotice />
+  }
 
   const handleDelete = async () => {
     if (!deleteTarget) return

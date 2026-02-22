@@ -21,6 +21,7 @@ CORS_ORIGINS = os.getenv(
     "CORS_ORIGINS", 
     "http://localhost:3000,http://localhost:3001"
 ).split(",")
+CORS_ALLOW_ORIGIN_REGEX = os.getenv("CORS_ALLOW_ORIGIN_REGEX", r"https://.*\.vercel\.app")
 
 # Model Configuration
 EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"

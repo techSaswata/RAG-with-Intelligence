@@ -13,7 +13,7 @@ export interface FrameResult {
 interface FrameResultGridProps {
   results: FrameResult[]
   onFrameClick: (result: FrameResult) => void
-  /** Base URL for API (e.g. http://localhost:8000) so thumbnail_url paths resolve */
+  /** Base URL for API so thumbnail_url paths resolve */
   apiBaseUrl: string
   apiKey?: string
 }
