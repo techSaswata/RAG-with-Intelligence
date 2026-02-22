@@ -20,3 +20,33 @@ backend/verify_chunk_storage.py
 backend/query_all_chunks.py
 backend/export_full_chunks.py
 tests/test_output_evaluator.py
+
+# Runtime storage/logs
+backend/image_storage/
+backend/video_storage/
+backend/logs/
+
+# Next.js build output
+.next/
+.env
+.kiro
+CHECKPOINT_6_VERIFICATION.md
+backend/services/ERROR_HANDLING.md
+.kiro/specs/clearpath-rag-chatbot/tasks.md
+CHECKPOINT_11_VERIFICATION.md
+backend/CONVERSATION_MANAGER_IMPLEMENTATION.md
+TASK_19_FINAL_VALIDATION.md
+venv
+/backend/venv/
+__pycache__
+frontend/DEBUG_PANEL_TEST.md
+frontend/API_CLIENT_VERIFICATION.md
+backend/INGESTION_README.md
+TASK_15_CHECKPOINT_VERIFICATION.md
+backend/services/MODEL_ROUTER_BUG_FIXES.md
+backend/services/OUTPUT_EVALUATOR_IMPROVEMENTS.md
+tests/
+backend/verify_chunk_storage.py
+backend/query_all_chunks.py
+backend/export_full_chunks.py
+tests/test_output_evaluator.py

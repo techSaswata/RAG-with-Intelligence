@@ -40,7 +40,9 @@ trap cleanup INT TERM EXIT
 
 (
   cd "${ROOT_DIR}/backend"
-  exec "${BACKEND_VENV}/bin/uvicorn" main:app --reload --port 8000
+  # Ensure the venv is active for any local tooling.
+  source "${BACKEND_VENV}/bin/activate"
+  exec uvicorn main:app --reload --port 8000
 ) &
 BACKEND_PID=$!
 

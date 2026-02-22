@@ -9,27 +9,27 @@ Multi-modal retrieval-augmented generation system. Three parallel search pipelin
 ```
                           ┌──────────────────────────┐
                           │     Next.js Frontend     │
-                          │  localhost:3000 (Vercel)  │
+                          │  localhost:3000 (Vercel) │
                           └────────────┬─────────────┘
                                        │
                           ┌────────────▼─────────────┐
-                          │    FastAPI Gateway        │
-                          │  localhost:8000 (Docker)  │
+                          │    FastAPI Gateway       │
+                          │  localhost:8000 (Docker) │
                           └────────────┬─────────────┘
                                        │
               ┌────────────────────────┼────────────────────────┐
               │                        │                        │
-    ┌─────────▼──────────┐  ┌─────────▼──────────┐  ┌─────────▼──────────┐
+    ┌─────────▼──────────┐  ┌──────────▼──────────┐  ┌──────────▼─────────┐
     │   Document RAG     │  │  Video Search       │  │  Image Search      │
     │   768-d mpnet-v2   │  │  512-d CLIP ViT-B32 │  │  512-d CLIP ViT-B32│
-    │   Groq LLM 8B/70B │  │  LLM Rewrite+Rerank │  │  Text→Image        │
-    └─────────┬──────────┘  └─────────┬──────────┘  └─────────┬──────────┘
+    │   Groq LLM 8B/70B  │  │  LLM Rewrite+Rerank │  │  Text→Image        │
+    └─────────┬──────────┘  └──────────┬──────────┘  └──────────┬─────────┘
               │                        │                        │
               └────────────────────────┼────────────────────────┘
                                        │
                           ┌────────────▼─────────────┐
-                          │  Supabase PostgreSQL      │
-                          │  pgvector + HNSW indexes  │
+                          │  Supabase PostgreSQL     │
+                          │  pgvector + HNSW indexes │
                           └──────────────────────────┘
 ```
 
@@ -532,11 +532,16 @@ IMAGE_API_KEY=your-secret
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-**Or with Docker:**
+**Run backend only (one-liner):**
 
 ```bash
-docker build -t vault-backend .
-docker run -p 8000:8000 --env-file ../.env vault-backend
+cd backend && uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Or both backend and frontend:**
+
+```bash
+./run.sh
 ```
 
 ### 3. Frontend
