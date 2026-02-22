@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import FrameResultGrid, { type FrameResult } from './FrameResultGrid'
 import VideoPlayerWithSeek from './VideoPlayerWithSeek'
+import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
 
 interface VideoImageSearchTabProps {
   apiBaseUrl: string
@@ -23,17 +24,21 @@ export default function VideoImageSearchTab({ apiBaseUrl, apiKey }: VideoImageSe
     setError(null)
     const headers: Record<string, string> = {}
     if (apiKey) headers['X-Api-Key'] = apiKey
+    const requestHeaders = withNgrokHeaders(headers, apiBaseUrl)
     const form = new FormData()
     form.append('file', file)
     if (prompt.trim()) {
       form.append('prompt', prompt.trim())
     }
     try {
-      const res = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/videos/search-by-image?top_k=12`, {
-        method: 'POST',
-        headers,
-        body: form,
-      })
+      const res = await fetch(
+        withNgrokBypass(`${apiBaseUrl.replace(/\/$/, '')}/videos/search-by-image?top_k=12`, apiBaseUrl),
+        {
+          method: 'POST',
+          headers: requestHeaders,
+          body: form,
+        }
+      )
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || res.statusText)
@@ -52,6 +57,7 @@ export default function VideoImageSearchTab({ apiBaseUrl, apiKey }: VideoImageSe
     let videoUrl = r.video_url.startsWith('http')
       ? r.video_url
       : `${apiBaseUrl.replace(/\/$/, '')}${r.video_url}`
+    videoUrl = withNgrokBypass(videoUrl, apiBaseUrl)
     if (apiKey) {
       const joiner = videoUrl.includes('?') ? '&' : '?'
       videoUrl = `${videoUrl}${joiner}api_key=${encodeURIComponent(apiKey)}`

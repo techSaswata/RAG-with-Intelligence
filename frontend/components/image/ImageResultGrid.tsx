@@ -1,5 +1,7 @@
 'use client'
 
+import { withNgrokBypass } from '@/lib/ngrok'
+
 export interface ImageResult {
   image_id: string
   image_path: string
@@ -31,7 +33,7 @@ export default function ImageResultGrid({
     const url = r.thumbnail_url.startsWith('http')
       ? r.thumbnail_url
       : `${apiBaseUrl.replace(/\/$/, '')}${r.thumbnail_url}`
-    return withApiKey(url)
+    return withApiKey(withNgrokBypass(url, apiBaseUrl))
   }
 
   if (results.length === 0) {

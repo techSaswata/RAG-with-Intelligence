@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import FrameResultGrid, { type FrameResult } from './FrameResultGrid'
 import VideoPlayerWithSeek from './VideoPlayerWithSeek'
+import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
 
 interface VideoSearchTabProps {
   apiBaseUrl: string
@@ -22,12 +23,16 @@ export default function VideoSearchTab({ apiBaseUrl, apiKey }: VideoSearchTabPro
     setError(null)
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (apiKey) headers['X-Api-Key'] = apiKey
+    const requestHeaders = withNgrokHeaders(headers, apiBaseUrl)
     try {
-      const res = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/videos/search`, {
+      const res = await fetch(
+        withNgrokBypass(`${apiBaseUrl.replace(/\/$/, '')}/videos/search`, apiBaseUrl),
+        {
         method: 'POST',
-        headers,
+        headers: requestHeaders,
         body: JSON.stringify({ query: query.trim(), top_k: 12 }),
-      })
+        }
+      )
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || res.statusText)
@@ -46,6 +51,7 @@ export default function VideoSearchTab({ apiBaseUrl, apiKey }: VideoSearchTabPro
     let videoUrl = r.video_url.startsWith('http')
       ? r.video_url
       : `${apiBaseUrl.replace(/\/$/, '')}${r.video_url}`
+    videoUrl = withNgrokBypass(videoUrl, apiBaseUrl)
     if (apiKey) {
       const joiner = videoUrl.includes('?') ? '&' : '?'
       videoUrl = `${videoUrl}${joiner}api_key=${encodeURIComponent(apiKey)}`

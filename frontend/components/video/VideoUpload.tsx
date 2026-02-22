@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
 
 const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.mkv']
 const ALLOWED_TYPES = ['video/mp4', 'video/quicktime', 'video/x-matroska']
@@ -233,12 +234,13 @@ export default function VideoUpload({ apiBaseUrl, apiKey }: VideoUploadProps) {
     form.append('file', item.file)
     const headers: Record<string, string> = {}
     if (apiKey) headers['X-Api-Key'] = apiKey
+    const requestHeaders = withNgrokHeaders(headers, apiBaseUrl)
 
     try {
-      const res = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/videos/upload`, {
+      const res = await fetch(withNgrokBypass(`${apiBaseUrl.replace(/\/$/, '')}/videos/upload`, apiBaseUrl), {
         method: 'POST',
         body: form,
-        headers,
+        headers: requestHeaders,
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -267,11 +269,12 @@ export default function VideoUpload({ apiBaseUrl, apiKey }: VideoUploadProps) {
   const pollStatus = (videoId: string, itemId: string) => {
     const headers: Record<string, string> = {}
     if (apiKey) headers['X-Api-Key'] = apiKey
+    const requestHeaders = withNgrokHeaders(headers, apiBaseUrl)
     const interval = setInterval(async () => {
       try {
         const res = await fetch(
-          `${apiBaseUrl.replace(/\/$/, '')}/videos/${videoId}/status`,
-          { headers }
+          withNgrokBypass(`${apiBaseUrl.replace(/\/$/, '')}/videos/${videoId}/status`, apiBaseUrl),
+          { headers: requestHeaders }
         )
         if (!res.ok) return
         const data = await res.json()

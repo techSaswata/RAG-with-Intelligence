@@ -5,6 +5,7 @@ import Link from 'next/link'
 import ImageUpload from '@/components/image/ImageUpload'
 import ImageSearchTab from '@/components/image/ImageSearchTab'
 import ApiMissingNotice from '@/components/ApiMissingNotice'
+import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 const IMAGE_API_KEY = process.env.NEXT_PUBLIC_IMAGE_API_KEY || ''
@@ -126,6 +127,7 @@ function ManageImagesTab() {
 
   const headers: Record<string, string> = {}
   if (IMAGE_API_KEY) headers['X-Api-Key'] = IMAGE_API_KEY
+  const requestHeaders = withNgrokHeaders(headers, API_URL)
 
   const withApiKey = (url: string) => {
     if (!IMAGE_API_KEY) return url
@@ -136,13 +138,13 @@ function ManageImagesTab() {
   const resolveUrl = (url: string) => {
     if (!url) return ''
     const full = url.startsWith('http') ? url : `${API_URL.replace(/\/$/, '')}${url}`
-    return withApiKey(full)
+    return withApiKey(withNgrokBypass(full, API_URL))
   }
 
   const fetchImages = useCallback(async () => {
     try {
       setError(null)
-      const res = await fetch(`${API_URL}/images/`, { headers })
+      const res = await fetch(withNgrokBypass(`${API_URL}/images/`, API_URL), { headers: requestHeaders })
       if (!res.ok) throw new Error(`Failed to fetch: ${res.statusText}`)
       const data = await res.json()
       setImages(data.images || [])
@@ -163,9 +165,9 @@ function ManageImagesTab() {
     if (!deleteTarget) return
     setIsDeleting(true)
     try {
-      const res = await fetch(`${API_URL}/images/${deleteTarget.image_id}`, {
+      const res = await fetch(withNgrokBypass(`${API_URL}/images/${deleteTarget.image_id}`, API_URL), {
         method: 'DELETE',
-        headers,
+        headers: requestHeaders,
       })
       if (!res.ok) throw new Error(`Delete failed: ${res.statusText}`)
       setImages((prev) => prev.filter((i) => i.image_id !== deleteTarget.image_id))

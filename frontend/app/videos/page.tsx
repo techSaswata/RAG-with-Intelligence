@@ -6,6 +6,7 @@ import VideoUpload from '@/components/video/VideoUpload'
 import VideoSearchTab from '@/components/video/VideoSearchTab'
 import VideoImageSearchTab from '@/components/video/VideoImageSearchTab'
 import ApiMissingNotice from '@/components/ApiMissingNotice'
+import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 const VIDEO_API_KEY = process.env.NEXT_PUBLIC_VIDEO_API_KEY || ''
@@ -141,6 +142,7 @@ function ManageVideosTab() {
 
   const headers: Record<string, string> = {}
   if (VIDEO_API_KEY) headers['X-Api-Key'] = VIDEO_API_KEY
+  const requestHeaders = withNgrokHeaders(headers, API_URL)
 
   const withApiKey = (url: string) => {
     if (!VIDEO_API_KEY) return url
@@ -151,13 +153,13 @@ function ManageVideosTab() {
   const resolveUrl = (url: string) => {
     if (!url) return ''
     const full = url.startsWith('http') ? url : `${API_URL.replace(/\/$/, '')}${url}`
-    return withApiKey(full)
+    return withApiKey(withNgrokBypass(full, API_URL))
   }
 
   const fetchVideos = useCallback(async () => {
     try {
       setError(null)
-      const res = await fetch(`${API_URL}/videos/`, { headers })
+      const res = await fetch(withNgrokBypass(`${API_URL}/videos/`, API_URL), { headers: requestHeaders })
       if (!res.ok) throw new Error(`Failed to fetch: ${res.statusText}`)
       const data = await res.json()
       setVideos(data.videos || [])
@@ -178,9 +180,9 @@ function ManageVideosTab() {
     if (!deleteTarget) return
     setIsDeleting(true)
     try {
-      const res = await fetch(`${API_URL}/videos/${deleteTarget.video_id}`, {
+      const res = await fetch(withNgrokBypass(`${API_URL}/videos/${deleteTarget.video_id}`, API_URL), {
         method: 'DELETE',
-        headers,
+        headers: requestHeaders,
       })
       if (!res.ok) throw new Error(`Delete failed: ${res.statusText}`)
       setVideos((prev) => prev.filter((v) => v.video_id !== deleteTarget.video_id))
