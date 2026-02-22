@@ -242,15 +242,16 @@ class LLMClient:
 """
         
         # Build complete prompt
-        prompt = f"""You are a helpful customer support assistant for ClearPath, a project management tool.
+        prompt = f"""You are an intelligent knowledge assistant. You answer questions based on documents that have been uploaded and indexed into your knowledge base.
 
 {context_section}{history_section}User question: {query}
 
 Instructions:
-- Answer based on the provided context
+- Answer based ONLY on the provided context from the uploaded documents
+- Use specific details, data, and quotes from the context to support your answer
+- If the context contains the answer, provide it directly and confidently — do not hedge
 - If the context doesn't contain relevant information, say so clearly
-- Be concise and helpful
-- Cite specific features or details from the documentation when applicable
+- Be concise, helpful, and direct
 
 Answer:"""
         

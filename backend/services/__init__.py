@@ -1,4 +1,4 @@
-"""Services for ClearPath RAG Chatbot."""
+"""Services for Intelligent RAG."""
 from .document_loader import DocumentLoader
 from .chunking_engine import ChunkingEngine
 from .embedding_model import EmbeddingModel

@@ -1,5 +1,5 @@
 """
-Model Router for ClearPath RAG Chatbot.
+Model Router for Intelligent RAG.
 
 This module implements deterministic query classification using a tiered decision tree
 to route queries to appropriate LLM models (llama-3.1-8b-instant or llama-3.3-70b-versatile).

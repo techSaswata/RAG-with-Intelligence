@@ -181,18 +181,44 @@ class OutputEvaluator:
         unverified_nouns = response_proper_nouns - chunks_proper_nouns
         
         # Filter out common words that might be capitalized but aren't features
-        # Note: These are now lowercase to match the updated extractor logic
         stop_words = {
             "the", "this", "that", "these", "those", "it", "they", "we", "you",
-            "a", "an", "and", "or", "but", "for"
+            "a", "an", "and", "or", "but", "for", "is", "are", "was", "were",
+            "has", "have", "had", "do", "does", "did", "will", "would", "could",
+            "should", "may", "might", "can", "yes", "no", "not", "also",
+            "most", "more", "very", "just", "only", "even", "still",
+            "here", "there", "where", "when", "how", "what", "which", "who",
+            "all", "each", "every", "both", "few", "some", "any", "many",
+            "such", "than", "too", "so", "if", "then", "because", "while",
+            "about", "between", "through", "during", "before", "after",
+            "above", "below", "from", "into", "with", "your", "their",
+            "our", "his", "her", "its", "my", "per", "via", "once",
+            "new", "first", "last", "next", "other", "same", "own",
         }
-        
+
+        # Also filter out common technical / general terms that aren't product features
+        common_tech_terms = {
+            "dsa", "github", "linkedin", "leetcode", "geeksforgeeks",
+            "python", "java", "javascript", "typescript", "react", "node",
+            "html", "css", "sql", "mongodb", "postgresql", "redis",
+            "docker", "kubernetes", "aws", "azure", "gcp",
+            "ai", "ml", "llm", "nlp", "api", "rest", "graphql",
+            "pdf", "csv", "json", "xml", "http", "https", "url",
+            "frontend", "backend", "fullstack", "devops", "data",
+            "interview", "coding", "programming", "software", "engineering",
+            "resume", "job", "career", "company", "hiring", "placement",
+            "furthermore", "additionally", "according", "mentioned",
+            "suggests", "indicates", "highlights", "emphasizes",
+        }
+
         significant_unverified = {
             noun for noun in unverified_nouns
-            if len(noun) > 2 and noun not in stop_words
+            if len(noun) > 2 and noun not in stop_words and noun not in common_tech_terms
         }
-        
-        return len(significant_unverified) > 0
+
+        # Require at least 3 unverified nouns to flag — a single capitalized word
+        # in the response shouldn't trigger a warning
+        return len(significant_unverified) >= 3
     
     def _extract_proper_nouns(self, text: str) -> Set[str]:
         """
@@ -209,7 +235,7 @@ class OutputEvaluator:
         # Look for words that are capitalized in the middle of sentences
         words = text.split()
         for i, word in enumerate(words):
-            # Strip possessives first to avoid "ClearPath's" becoming "ClearPaths"
+            # Strip possessives first to avoid "Name's" becoming "Names"
             word = word.replace("'s", "").replace("\u2019s", "")
             
             # Clean remaining punctuation

@@ -1,5 +1,6 @@
-"""API request and response models for the ClearPath RAG Chatbot."""
+"""API request and response models for the Intelligent RAG pipeline."""
 from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -38,3 +39,82 @@ class QueryResponse(BaseModel):
     metadata: ResponseMetadata = Field(..., description="Query processing metadata")
     sources: List[Source] = Field(default_factory=list, description="Source documents used")
     conversation_id: str = Field(..., description="Conversation ID for this exchange")
+
+
+class UploadFileResult(BaseModel):
+    """Result for a single uploaded file."""
+    filename: str = Field(..., description="Name of the uploaded file")
+    pages: int = Field(0, description="Number of pages extracted")
+    chunks: int = Field(0, description="Number of chunks created")
+    status: str = Field(..., description="Processing status: success or error")
+    error: Optional[str] = Field(None, description="Error message if processing failed")
+
+
+class UploadResponse(BaseModel):
+    """Response model for POST /upload endpoint."""
+    files: List[UploadFileResult] = Field(..., description="Results per file")
+    total_chunks: int = Field(..., description="Total chunks created across all files")
+    total_pages: int = Field(..., description="Total pages processed across all files")
+    latency_ms: int = Field(..., description="Total processing time in milliseconds")
+
+
+# --- Video Semantic Search API models (separate from document RAG) ---
+
+
+class VideoUploadResponse(BaseModel):
+    """Response for POST /videos/upload (202 Accepted)."""
+    video_id: str = Field(..., description="Unique video identifier")
+    job_id: Optional[str] = Field(None, description="Processing job id if async")
+    message: str = Field(..., description="Status message")
+    original_filename: str = Field(..., description="Original file name")
+
+
+class VideoStatusResponse(BaseModel):
+    """Response for GET /videos/{video_id}/status."""
+    video_id: str
+    status: str = Field(..., description="pending | processing | processed | failed")
+    progress: Optional[float] = Field(None, description="0-1 if processing")
+    error: Optional[str] = Field(None, description="Error message if failed")
+
+
+class VideoSearchRequest(BaseModel):
+    """Request for POST /videos/search."""
+    query: str = Field(..., min_length=1, max_length=1000)
+    top_k: int = Field(10, ge=1, le=50)
+
+
+class VideoSearchResultItem(BaseModel):
+    """Single frame in video search results."""
+    frame_id: str
+    video_id: str
+    timestamp_sec: float
+    frame_path: str
+    thumbnail_url: str = Field(..., description="URL to fetch thumbnail image")
+    video_url: str = Field(..., description="URL to stream video for player")
+    similarity: float
+
+
+class VideoSearchResponse(BaseModel):
+    """Response for POST /videos/search."""
+    results: List["VideoSearchResultItem"] = Field(default_factory=list)
+
+
+class DocumentInfo(BaseModel):
+    """Info about a single document in the vector store."""
+    document_name: str = Field(..., description="Document filename")
+    chunk_count: int = Field(..., description="Number of chunks stored")
+    page_count: int = Field(..., description="Number of pages")
+
+
+class DocumentsListResponse(BaseModel):
+    """Response model for GET /documents endpoint."""
+    documents: List[DocumentInfo] = Field(..., description="All documents in the vector store")
+    total_documents: int = Field(..., description="Total number of documents")
+    total_chunks: int = Field(..., description="Total chunks across all documents")
+
+
+class DeleteDocumentResponse(BaseModel):
+    """Response model for DELETE /documents/{name} endpoint."""
+    document_name: str = Field(..., description="Deleted document name")
+    chunks_deleted: int = Field(..., description="Number of chunks removed")
+    status: str = Field(..., description="Deletion status")

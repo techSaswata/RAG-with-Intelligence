@@ -1,15 +1,18 @@
-"""Main entry point for ClearPath RAG Chatbot API."""
+"""Main entry point for Intelligent RAG API."""
 import logging
 import time
+import tempfile
+import os
+import shutil
 import tiktoken
 from typing import List
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from config import PORT, CORS_ORIGINS
-from models.api import QueryRequest, QueryResponse, ResponseMetadata, TokenUsage, Source
-from models.chunk import ScoredChunk
+from models.api import QueryRequest, QueryResponse, ResponseMetadata, TokenUsage, Source, UploadResponse, UploadFileResult, DocumentsListResponse, DocumentInfo, DeleteDocumentResponse
+from models.chunk import Chunk, ScoredChunk
 from services.model_router import ModelRouter
 from services.retrieval_engine import RetrievalEngine
 from services.llm_client import LLMClient, LLMClientError
@@ -18,14 +21,42 @@ from services.conversation_manager import ConversationManager
 from services.routing_logger import RoutingLogger
 from services.vector_store import VectorStore
 from services.embedding_model import EmbeddingModel
+from services.document_loader import DocumentLoader
+from services.chunking_engine import ChunkingEngine
+
+# Video semantic search (optional; isolated from document RAG)
+try:
+    from routers.video import router as video_router
+    from routers.video import set_video_services
+    from services.video import (
+        VideoUploadHandler,
+        VideoMetadataManager,
+        VideoVectorStore,
+        VideoSearchService,
+        process_video_pipeline,
+    )
+    from services.video.video_embedding_engine import get_video_embedding_engine
+    from config import (
+        VIDEO_MODE,
+        VIDEO_EMBEDDING_DIM,
+        VIDEO_FRAME_INTERVAL_SEC,
+        HUGGINGFACE_API_KEY,
+        VIDEO_LOCAL_EMBEDDING_MODEL,
+        VIDEO_SERVER_EMBEDDING_MODEL,
+        VIDEO_SERVER_FALLBACK_TO_LOCAL,
+    )
+    _VIDEO_AVAILABLE = True
+except Exception as e:
+    logging.getLogger(__name__).warning(f"Video semantic search not available: {e}")
+    _VIDEO_AVAILABLE = False
 
 # Initialize logging
 logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="ClearPath RAG Chatbot",
-    description="Customer support chatbot for ClearPath project management tool",
+    title="Intelligent RAG",
+    description="Document-agnostic RAG pipeline with intelligent retrieval and generation",
     version="1.0.0"
 )
 
@@ -38,6 +69,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+if _VIDEO_AVAILABLE:
+    app.include_router(video_router)
+
 # Initialize services (will be done on startup)
 model_router: ModelRouter = None
 retrieval_engine: RetrievalEngine = None
@@ -45,6 +79,9 @@ llm_client: LLMClient = None
 output_evaluator: OutputEvaluator = None
 conversation_manager: ConversationManager = None
 routing_logger: RoutingLogger = None
+chunking_engine: ChunkingEngine = None
+vector_store_instance: VectorStore = None
+embedding_model_instance: EmbeddingModel = None
 tiktoken_encoder = None
 
 
@@ -53,22 +90,26 @@ async def startup_event():
     """Initialize services on startup."""
     global model_router, retrieval_engine, llm_client, output_evaluator
     global conversation_manager, routing_logger, tiktoken_encoder
-    
-    logger.info("Initializing ClearPath RAG Chatbot services...")
-    
+    global chunking_engine, vector_store_instance, embedding_model_instance
+
+    logger.info("Initializing Intelligent RAG services...")
+
     try:
         # Initialize tiktoken encoder for Llama 3 token counting
         tiktoken_encoder = tiktoken.get_encoding("o200k_base")
         logger.info("Initialized tiktoken encoder (o200k_base)")
-        
+
         # Initialize services
         model_router = ModelRouter()
         logger.info("Initialized ModelRouter")
-        
-        embedding_model = EmbeddingModel()
-        vector_store = VectorStore(embedding_model)
-        retrieval_engine = RetrievalEngine(vector_store, embedding_model)
+
+        embedding_model_instance = EmbeddingModel()
+        vector_store_instance = VectorStore(embedding_model_instance)
+        retrieval_engine = RetrievalEngine(vector_store_instance, embedding_model_instance)
         logger.info("Initialized RetrievalEngine")
+
+        chunking_engine = ChunkingEngine()
+        logger.info("Initialized ChunkingEngine")
         
         llm_client = LLMClient()
         logger.info("Initialized LLMClient")
@@ -81,7 +122,45 @@ async def startup_event():
         
         routing_logger = RoutingLogger()
         logger.info("Initialized RoutingLogger")
-        
+
+        # Video semantic search (isolated from document RAG)
+        if _VIDEO_AVAILABLE:
+            try:
+                video_upload_handler = VideoUploadHandler()
+                video_metadata_manager = VideoMetadataManager()
+                video_vector_store = VideoVectorStore()
+                video_embedding_engine = get_video_embedding_engine(
+                    VIDEO_MODE,
+                    local_model=VIDEO_LOCAL_EMBEDDING_MODEL,
+                    server_model=VIDEO_SERVER_EMBEDDING_MODEL,
+                    api_key=HUGGINGFACE_API_KEY,
+                    dimension=VIDEO_EMBEDDING_DIM,
+                    fallback_to_local=VIDEO_SERVER_FALLBACK_TO_LOCAL,
+                )
+                video_search_service = VideoSearchService(video_embedding_engine, video_vector_store)
+
+                def run_video_job(video_id: str):
+                    process_video_pipeline(
+                        video_id,
+                        frame_interval_sec=VIDEO_FRAME_INTERVAL_SEC,
+                        metadata_manager=video_metadata_manager,
+                        embedding_engine=video_embedding_engine,
+                        vector_store=video_vector_store,
+                        get_stored_path_fn=video_upload_handler.get_stored_path,
+                    )
+
+                set_video_services(
+                    upload_handler=video_upload_handler,
+                    metadata_manager=video_metadata_manager,
+                    vector_store=video_vector_store,
+                    search_service=video_search_service,
+                    base_url="",
+                    process_video_callable=run_video_job,
+                )
+                logger.info("Video semantic search services initialized")
+            except Exception as ve:
+                logger.warning(f"Video services init failed (video endpoints may return 503): {ve}")
+
         logger.info("All services initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize services: {e}", exc_info=True)
@@ -91,7 +170,7 @@ async def startup_event():
 @app.get("/")
 async def root():
     """Health check endpoint."""
-    return {"status": "ok", "message": "ClearPath RAG Chatbot API"}
+    return {"status": "ok", "message": "Intelligent RAG API"}
 
 
 @app.get("/health")
@@ -99,7 +178,7 @@ async def health():
     """Detailed health check."""
     return {
         "status": "healthy",
-        "service": "clearpath-rag-chatbot",
+        "service": "intelligent-rag",
         "version": "1.0.0"
     }
 @app.get("/wake")
@@ -114,7 +193,7 @@ async def wake():
 @app.post("/query", response_model=QueryResponse)
 async def query_endpoint(request: QueryRequest) -> QueryResponse:
     """
-    Main query endpoint for the ClearPath RAG Chatbot.
+    Main query endpoint for the Intelligent RAG pipeline.
     
     Processes user queries through the three-layer architecture:
     1. RAG Pipeline: Retrieves relevant document chunks
@@ -304,7 +383,7 @@ def _calculate_complexity_score(query: str, classification) -> dict:
 @app.post("/query/stream")
 async def query_stream_endpoint(request: QueryRequest):
     """
-    Streaming query endpoint for the ClearPath RAG Chatbot.
+    Streaming query endpoint for the Intelligent RAG pipeline.
 
     Processes user queries and streams the response as Server-Sent Events (SSE).
     Sends tokens progressively as they are generated, followed by final metadata.
@@ -490,7 +569,169 @@ async def query_stream_endpoint(request: QueryRequest):
 
 
 
+@app.post("/upload", response_model=UploadResponse)
+async def upload_endpoint(files: List[UploadFile] = File(...)):
+    """
+    Upload PDF files and ingest them into the vector store.
+
+    Processes each file through the full ingestion pipeline:
+    1. PDF text extraction (PyMuPDF)
+    2. Contextual header injection (font-size analysis)
+    3. Token-aware chunking (300t / 50 overlap)
+    4. Embedding generation (all-mpnet-base-v2, 768-d)
+    5. Vector storage (Supabase pgvector)
+
+    Args:
+        files: One or more PDF files
+
+    Returns:
+        UploadResponse with per-file results and totals
+    """
+    start_time = time.time()
+    results: List[UploadFileResult] = []
+    total_chunks = 0
+    total_pages = 0
+
+    for upload_file in files:
+        # Validate file type
+        if not upload_file.filename or not upload_file.filename.lower().endswith('.pdf'):
+            results.append(UploadFileResult(
+                filename=upload_file.filename or "unknown",
+                status="error",
+                error="Only PDF files are accepted"
+            ))
+            continue
+
+        # Validate file size (50MB limit)
+        contents = await upload_file.read()
+        if len(contents) > 50 * 1024 * 1024:
+            results.append(UploadFileResult(
+                filename=upload_file.filename,
+                status="error",
+                error="File exceeds 50MB limit"
+            ))
+            continue
+
+        tmp_dir = None
+        try:
+            # Write to a temp directory using the original filename
+            # so ChunkingEngine._extract_headers() can find it at {dir}/{filename}
+            tmp_dir = tempfile.mkdtemp()
+            tmp_path = os.path.join(tmp_dir, upload_file.filename)
+            with open(tmp_path, "wb") as f:
+                f.write(contents)
+
+            # Step 1: Load PDF
+            loader = DocumentLoader(docs_directory=tmp_dir)
+            document = loader._load_pdf(tmp_path, upload_file.filename)
+            if not document or not document.pages:
+                results.append(UploadFileResult(
+                    filename=upload_file.filename,
+                    status="error",
+                    error="Could not extract text from PDF"
+                ))
+                continue
+
+            file_pages = len(document.pages)
+
+            # Step 2-3: Chunk with contextual headers
+            chunks = chunking_engine.chunk_documents([document], docs_directory=tmp_dir)
+
+            if not chunks:
+                results.append(UploadFileResult(
+                    filename=upload_file.filename,
+                    pages=file_pages,
+                    status="error",
+                    error="No chunks produced from document"
+                ))
+                continue
+
+            file_chunks = len(chunks)
+
+            # Step 4-5: Embed and store in batches
+            batch_size = 10
+            for i in range(0, len(chunks), batch_size):
+                batch = chunks[i:i + batch_size]
+                vector_store_instance.add_chunks(batch)
+
+            total_chunks += file_chunks
+            total_pages += file_pages
+
+            results.append(UploadFileResult(
+                filename=upload_file.filename,
+                pages=file_pages,
+                chunks=file_chunks,
+                status="success"
+            ))
+            logger.info(f"Ingested {upload_file.filename}: {file_pages} pages, {file_chunks} chunks")
+
+        except Exception as e:
+            logger.error(f"Error processing {upload_file.filename}: {e}", exc_info=True)
+            results.append(UploadFileResult(
+                filename=upload_file.filename,
+                status="error",
+                error=str(e)
+            ))
+        finally:
+            # Clean up temp directory
+            if tmp_dir and os.path.exists(tmp_dir):
+                try:
+                    shutil.rmtree(tmp_dir)
+                except OSError:
+                    pass
+
+    latency_ms = int((time.time() - start_time) * 1000)
+
+    return UploadResponse(
+        files=results,
+        total_chunks=total_chunks,
+        total_pages=total_pages,
+        latency_ms=latency_ms
+    )
+
+
+@app.get("/documents", response_model=DocumentsListResponse)
+async def list_documents():
+    """List all documents in the vector store with chunk/page counts."""
+    try:
+        docs = vector_store_instance.list_documents()
+        total_chunks = sum(d["chunk_count"] for d in docs)
+
+        return DocumentsListResponse(
+            documents=[DocumentInfo(**d) for d in docs],
+            total_documents=len(docs),
+            total_chunks=total_chunks,
+        )
+    except Exception as e:
+        logger.error(f"Failed to list documents: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/documents/{document_name}", response_model=DeleteDocumentResponse)
+async def delete_document(document_name: str):
+    """Delete all chunks for a specific document from the vector store."""
+    try:
+        deleted = vector_store_instance.delete_document(document_name)
+
+        if deleted == 0:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Document '{document_name}' not found",
+            )
+
+        return DeleteDocumentResponse(
+            document_name=document_name,
+            chunks_deleted=deleted,
+            status="deleted",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete document: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
-    logger.info(f"Starting ClearPath RAG Chatbot API on port {PORT}")
+    logger.info(f"Starting Intelligent RAG API on port {PORT}")
     uvicorn.run(app, host="0.0.0.0", port=PORT)

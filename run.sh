@@ -3,18 +3,28 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_VENV="${ROOT_DIR}/backend/.venv"
+BACKEND_REQS="${ROOT_DIR}/backend/requirements.txt"
+BACKEND_REQS_STAMP="${BACKEND_VENV}/.requirements.installed"
 
-if [[ ! -x "${BACKEND_VENV}/bin/uvicorn" ]]; then
-  echo "Backend venv not found. Create it first:"
-  echo "  python3 -m venv backend/.venv"
-  echo "  backend/.venv/bin/pip install -r backend/requirements.txt"
+if [[ ! -d "${BACKEND_VENV}" ]]; then
+  echo "Creating backend venv..."
+  python3 -m venv "${BACKEND_VENV}"
+fi
+
+if [[ ! -x "${BACKEND_VENV}/bin/python" ]]; then
+  echo "Backend venv is missing a Python binary."
   exit 1
 fi
 
+if [[ ! -f "${BACKEND_REQS_STAMP}" || "${BACKEND_REQS}" -nt "${BACKEND_REQS_STAMP}" ]]; then
+  echo "Installing backend dependencies..."
+  "${BACKEND_VENV}/bin/pip" install -r "${BACKEND_REQS}"
+  touch "${BACKEND_REQS_STAMP}"
+fi
+
 if [[ ! -d "${ROOT_DIR}/frontend/node_modules" ]]; then
-  echo "Frontend dependencies not installed. Run:"
-  echo "  cd frontend && npm install"
-  exit 1
+  echo "Installing frontend dependencies..."
+  (cd "${ROOT_DIR}/frontend" && npm install)
 fi
 
 cleanup() {

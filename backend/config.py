@@ -1,4 +1,4 @@
-"""Configuration management for ClearPath RAG Chatbot."""
+"""Configuration management for Intelligent RAG."""
 import os
 import logging
 from dotenv import load_dotenv
@@ -35,6 +35,24 @@ MAX_CHUNKS = 5
 # Retrieval Configuration
 RELEVANCE_THRESHOLD = 0.3
 DYNAMIC_K_CUTOFF = 0.8  # Only include chunks within 80% of top score
+
+# --- Video Semantic Search (isolated from document RAG) ---
+VIDEO_MODE = os.getenv("VIDEO_MODE", "server").lower()  # "local" | "server"
+VIDEO_STORAGE_PATH = os.getenv("VIDEO_STORAGE_PATH", os.path.join(os.getcwd(), "video_storage"))
+VIDEO_MAX_SIZE_MB = int(os.getenv("VIDEO_MAX_SIZE_MB", "500"))
+VIDEO_FRAME_INTERVAL_SEC = float(os.getenv("VIDEO_FRAME_INTERVAL_SEC", "1.0"))
+VIDEO_EMBEDDING_DIM = int(os.getenv("VIDEO_EMBEDDING_DIM", "512"))
+VIDEO_ALLOWED_EXTENSIONS = (".mp4", ".mov", ".mkv")
+
+# Video embedding: Local mode (model path or HF id for image+text, e.g. CLIP)
+VIDEO_LOCAL_EMBEDDING_MODEL = os.getenv("VIDEO_LOCAL_EMBEDDING_MODEL", "sentence-transformers/clip-ViT-B-32")
+# Video embedding: Server mode uses HUGGINGFACE_API_KEY + HF inference image model
+VIDEO_SERVER_EMBEDDING_MODEL = os.getenv("VIDEO_SERVER_EMBEDDING_MODEL", "sentence-transformers/clip-ViT-B-32")
+# If server embedding fails, optionally fall back to local model
+VIDEO_SERVER_FALLBACK_TO_LOCAL = os.getenv("VIDEO_SERVER_FALLBACK_TO_LOCAL", "true").lower() in {"1", "true", "yes"}
+
+# Optional: require API key for video endpoints (set VIDEO_API_KEY to enable)
+VIDEO_API_KEY = os.getenv("VIDEO_API_KEY", "")
 
 # Logging Configuration
 logging.basicConfig(
