@@ -13,8 +13,14 @@ from .api import (
     VideoSearchRequest,
     VideoSearchResultItem,
     VideoSearchResponse,
+    ImageUploadResponse,
+    ImageStatusResponse,
+    ImageSearchRequest,
+    ImageSearchResultItem,
+    ImageSearchResponse,
 )
 from .video import VideoMetadata, FrameMetadata, VideoSearchResult
+from .image import ImageMetadata
 
 __all__ = [
     "Document",
@@ -36,4 +42,10 @@ __all__ = [
     "VideoSearchRequest",
     "VideoSearchResultItem",
     "VideoSearchResponse",
+    "ImageUploadResponse",
+    "ImageStatusResponse",
+    "ImageSearchRequest",
+    "ImageSearchResultItem",
+    "ImageSearchResponse",
+    "ImageMetadata",
 ]

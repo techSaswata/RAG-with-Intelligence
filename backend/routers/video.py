@@ -1,16 +1,27 @@
 """Video semantic search API. Isolated from document RAG endpoints."""
 import logging
 import os
+import tempfile
+from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile, Header
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile, Header, Form
 from fastapi.responses import FileResponse
 
-from config import VIDEO_API_KEY
+from config import (
+    IMAGE_ALLOWED_EXTENSIONS,
+    IMAGE_MAX_SIZE_MB,
+    VIDEO_API_KEY,
+    VIDEO_IMAGE_MATCH_THRESHOLD,
+    VIDEO_IMAGE_TOP_K,
+    VIDEO_IMAGE_PROMPT_WEIGHT,
+)
 from models.api import (
+    VideoListItem,
     VideoSearchRequest,
     VideoSearchResponse,
     VideoSearchResultItem,
+    VideosListResponse,
     VideoStatusResponse,
     VideoUploadResponse,
 )
@@ -75,6 +86,30 @@ def _get_search_service() -> VideoSearchService:
     return _search_service
 
 
+@router.get("/", response_model=VideosListResponse)
+async def list_videos(
+    x_api_key: Optional[str] = Header(default=None),
+    api_key: Optional[str] = None,
+):
+    """List all uploaded videos."""
+    _require_auth(api_key or x_api_key)
+    meta = _get_metadata_manager()
+    videos = meta.list_all_videos()
+    items = []
+    for v in videos:
+        frame_count = meta.get_frame_count(v.video_id)
+        items.append(
+            VideoListItem(
+                video_id=v.video_id,
+                original_filename=v.original_filename,
+                status=v.status,
+                file_size_bytes=v.file_size_bytes,
+                frame_count=frame_count,
+            )
+        )
+    return VideosListResponse(videos=items, total_videos=len(items))
+
+
 @router.post("/upload", response_model=VideoUploadResponse)
 async def video_upload(
     background_tasks: BackgroundTasks,
@@ -136,6 +171,66 @@ async def video_search(
         rows = svc.search(query=body.query, top_k=body.top_k)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    base = _base_url or ""
+    results = []
+    for frame_id, vid, ts, frame_path, sim in rows:
+        thumb_url = f"{base}/videos/frames/{frame_id}/thumbnail" if base else f"/videos/frames/{frame_id}/thumbnail"
+        video_url = f"{base}/videos/{vid}/file" if base else f"/videos/{vid}/file"
+        results.append(
+            VideoSearchResultItem(
+                frame_id=frame_id,
+                video_id=vid,
+                timestamp_sec=ts,
+                frame_path=frame_path,
+                thumbnail_url=thumb_url,
+                video_url=video_url,
+                similarity=round(sim, 4),
+            )
+        )
+    return VideoSearchResponse(results=results)
+
+
+@router.post("/search-by-image", response_model=VideoSearchResponse)
+async def video_search_by_image(
+    file: UploadFile = File(...),
+    prompt: Optional[str] = Form(default=None),
+    top_k: int = VIDEO_IMAGE_TOP_K,
+    match_threshold: float = VIDEO_IMAGE_MATCH_THRESHOLD,
+    x_api_key: Optional[str] = Header(default=None),
+    api_key: Optional[str] = None,
+):
+    _require_auth(api_key or x_api_key)
+    svc = _get_search_service()
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Missing filename")
+    ext = Path(file.filename).suffix.lower()
+    if ext not in IMAGE_ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed: {IMAGE_ALLOWED_EXTENSIONS}")
+    contents = await file.read()
+    if len(contents) > IMAGE_MAX_SIZE_MB * 1024 * 1024:
+        raise HTTPException(status_code=400, detail=f"File too large. Max size: {IMAGE_MAX_SIZE_MB} MB")
+
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+            tmp.write(contents)
+            tmp_path = tmp.name
+        rows = svc.search_by_image_with_prompt(
+            image_path=tmp_path,
+            prompt=prompt,
+            prompt_weight=VIDEO_IMAGE_PROMPT_WEIGHT,
+            top_k=top_k,
+            match_threshold=match_threshold,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        if tmp_path and os.path.isfile(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
     base = _base_url or ""
     results = []
     for frame_id, vid, ts, frame_path, sim in rows:

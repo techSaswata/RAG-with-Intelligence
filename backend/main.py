@@ -44,11 +44,41 @@ try:
         VIDEO_LOCAL_EMBEDDING_MODEL,
         VIDEO_SERVER_EMBEDDING_MODEL,
         VIDEO_SERVER_FALLBACK_TO_LOCAL,
+        VIDEO_LLM_MODEL,
+        VIDEO_LLM_REWRITE_ENABLED,
+        VIDEO_LLM_RERANK_ENABLED,
+        VIDEO_LLM_REWRITE_COUNT,
+        VIDEO_LLM_RERANK_CANDIDATES,
     )
     _VIDEO_AVAILABLE = True
 except Exception as e:
     logging.getLogger(__name__).warning(f"Video semantic search not available: {e}")
     _VIDEO_AVAILABLE = False
+
+# Image semantic search (optional; isolated from video/document RAG)
+try:
+    from routers.image import router as image_router
+    from routers.image import set_image_services
+    from services.image import (
+        ImageUploadHandler,
+        ImageMetadataManager,
+        ImageVectorStore,
+        ImageSearchService,
+        process_image_pipeline,
+    )
+    from services.video.video_embedding_engine import get_video_embedding_engine as get_image_embedding_engine
+    from config import (
+        IMAGE_MODE,
+        IMAGE_EMBEDDING_DIM,
+        IMAGE_LOCAL_EMBEDDING_MODEL,
+        IMAGE_SERVER_EMBEDDING_MODEL,
+        IMAGE_SERVER_FALLBACK_TO_LOCAL,
+        HUGGINGFACE_API_KEY as IMAGE_HF_API_KEY,
+    )
+    _IMAGE_AVAILABLE = True
+except Exception as e:
+    logging.getLogger(__name__).warning(f"Image semantic search not available: {e}")
+    _IMAGE_AVAILABLE = False
 
 # Initialize logging
 logger = logging.getLogger(__name__)
@@ -71,6 +101,8 @@ app.add_middleware(
 
 if _VIDEO_AVAILABLE:
     app.include_router(video_router)
+if _IMAGE_AVAILABLE:
+    app.include_router(image_router)
 
 # Initialize services (will be done on startup)
 model_router: ModelRouter = None
@@ -137,7 +169,16 @@ async def startup_event():
                     dimension=VIDEO_EMBEDDING_DIM,
                     fallback_to_local=VIDEO_SERVER_FALLBACK_TO_LOCAL,
                 )
-                video_search_service = VideoSearchService(video_embedding_engine, video_vector_store)
+                video_search_service = VideoSearchService(
+                    video_embedding_engine,
+                    video_vector_store,
+                    llm_client=llm_client,
+                    llm_model=VIDEO_LLM_MODEL,
+                    rewrite_enabled=VIDEO_LLM_REWRITE_ENABLED,
+                    rerank_enabled=VIDEO_LLM_RERANK_ENABLED,
+                    rewrite_count=VIDEO_LLM_REWRITE_COUNT,
+                    rerank_candidates=VIDEO_LLM_RERANK_CANDIDATES,
+                )
 
                 def run_video_job(video_id: str):
                     process_video_pipeline(
@@ -160,6 +201,43 @@ async def startup_event():
                 logger.info("Video semantic search services initialized")
             except Exception as ve:
                 logger.warning(f"Video services init failed (video endpoints may return 503): {ve}")
+
+        # Image semantic search (isolated from video/document RAG)
+        if _IMAGE_AVAILABLE:
+            try:
+                image_upload_handler = ImageUploadHandler()
+                image_metadata_manager = ImageMetadataManager()
+                image_vector_store = ImageVectorStore()
+                image_embedding_engine = get_image_embedding_engine(
+                    IMAGE_MODE,
+                    local_model=IMAGE_LOCAL_EMBEDDING_MODEL,
+                    server_model=IMAGE_SERVER_EMBEDDING_MODEL,
+                    api_key=IMAGE_HF_API_KEY,
+                    dimension=IMAGE_EMBEDDING_DIM,
+                    fallback_to_local=IMAGE_SERVER_FALLBACK_TO_LOCAL,
+                )
+                image_search_service = ImageSearchService(image_embedding_engine, image_vector_store)
+
+                def run_image_job(image_id: str):
+                    process_image_pipeline(
+                        image_id,
+                        metadata_manager=image_metadata_manager,
+                        embedding_engine=image_embedding_engine,
+                        vector_store=image_vector_store,
+                        get_stored_path_fn=image_upload_handler.get_stored_path,
+                    )
+
+                set_image_services(
+                    upload_handler=image_upload_handler,
+                    metadata_manager=image_metadata_manager,
+                    vector_store=image_vector_store,
+                    search_service=image_search_service,
+                    base_url="",
+                    process_image_callable=run_image_job,
+                )
+                logger.info("Image semantic search services initialized")
+            except Exception as ie:
+                logger.warning(f"Image services init failed (image endpoints may return 503): {ie}")
 
         logger.info("All services initialized successfully")
     except Exception as e:

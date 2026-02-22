@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 
 interface Message {
@@ -406,7 +407,7 @@ export default function AskPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <span className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.2em] ${statusMeta.classes}`}>
+            {/* <span className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.2em] ${statusMeta.classes}`}>
               {statusMeta.label}
             </span>
             <button
@@ -418,7 +419,19 @@ export default function AskPage() {
               }`}
             >
               {useStreaming ? 'Streaming on' : 'Streaming off'}
-            </button>
+            </button> */}
+            <Link
+              href="/upload"
+              className="rounded-full border border-slate-700/60 bg-neutral-950/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
+            >
+              Upload doc
+            </Link>
+            <Link
+              href="/docs"
+              className="rounded-full border border-slate-700/60 bg-neutral-950/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
+            >
+              View uploaded docs
+            </Link>
             {messages.length > 0 && (
               <button
                 onClick={clearChat}

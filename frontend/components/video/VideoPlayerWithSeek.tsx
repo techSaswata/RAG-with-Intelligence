@@ -30,7 +30,7 @@ export default function VideoPlayerWithSeek({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
       <div
-        className="relative max-h-[90vh] w-full max-w-4xl rounded-2xl border border-slate-700/60 bg-neutral-950 shadow-2xl"
+        className="relative flex max-h-[90vh] w-auto max-w-[92vw] flex-col items-center rounded-2xl border border-slate-700/60 bg-neutral-950 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         <button
@@ -45,7 +45,7 @@ export default function VideoPlayerWithSeek({
         <video
           ref={videoRef}
           controls
-          className="w-full rounded-2xl"
+          className="max-h-[80vh] max-w-[90vw] w-auto rounded-2xl object-contain"
           onEnded={() => {}}
         />
         <p className="p-3 text-center text-xs text-slate-500">

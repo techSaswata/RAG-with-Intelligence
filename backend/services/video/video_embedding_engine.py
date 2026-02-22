@@ -90,11 +90,17 @@ class ServerVideoEmbeddingEngine(VideoEmbeddingEngine):
             data = f.read()
         url = f"{self._base}/models/{self._model_name}"
         headers = {"Authorization": f"Bearer {self._api_key}"}
+        content_type = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".webp": "image/webp",
+        }.get(path.suffix.lower(), "application/octet-stream")
         # HF inference accepts raw image bytes with Content-Type
         r = self._client.post(
             url,
             content=data,
-            headers={**headers, "Content-Type": "image/jpeg"},
+            headers={**headers, "Content-Type": content_type},
         )
         r.raise_for_status()
         out = r.json()

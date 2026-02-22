@@ -4,12 +4,13 @@ import { useState } from 'react'
 import Link from 'next/link'
 import VideoUpload from '@/components/video/VideoUpload'
 import VideoSearchTab from '@/components/video/VideoSearchTab'
+import VideoImageSearchTab from '@/components/video/VideoImageSearchTab'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const VIDEO_API_KEY = process.env.NEXT_PUBLIC_VIDEO_API_KEY || ''
 
 export default function VideosPage() {
-  const [tab, setTab] = useState<'upload' | 'search'>('upload')
+  const [tab, setTab] = useState<'upload' | 'search' | 'image'>('upload')
 
   return (
     <main className="relative min-h-screen bg-black text-slate-100 overflow-x-hidden">
@@ -41,6 +42,12 @@ export default function VideosPage() {
               className="rounded-xl border border-slate-800/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-400 transition hover:border-slate-600 hover:text-slate-200"
             >
               Documents
+            </Link>
+            <Link
+              href="/images"
+              className="rounded-xl border border-slate-800/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-400 transition hover:border-slate-600 hover:text-slate-200"
+            >
+              Images
             </Link>
           </div>
         </nav>
@@ -79,6 +86,17 @@ export default function VideosPage() {
             >
               Search
             </button>
+            <button
+              type="button"
+              onClick={() => setTab('image')}
+              className={`flex-1 rounded-lg py-2 text-sm font-medium transition ${
+                tab === 'image'
+                  ? 'bg-slate-800 text-slate-100'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Image Search
+            </button>
           </div>
 
           {tab === 'upload' && (
@@ -86,6 +104,9 @@ export default function VideosPage() {
           )}
           {tab === 'search' && (
             <VideoSearchTab apiBaseUrl={API_URL} apiKey={VIDEO_API_KEY || undefined} />
+          )}
+          {tab === 'image' && (
+            <VideoImageSearchTab apiBaseUrl={API_URL} apiKey={VIDEO_API_KEY || undefined} />
           )}
         </section>
       </div>

@@ -107,6 +107,26 @@ class VideoMetadataManager:
         v = self.get_video(video_id)
         return v.stored_path if v else None
 
+    def list_all_videos(self) -> list:
+        """Return all video records ordered by newest first."""
+        r = self.client.table("videos").select("*").order("created_at", desc=True).execute()
+        return [
+            VideoMetadata(
+                video_id=row["video_id"],
+                original_filename=row["original_filename"],
+                stored_path=row["stored_path"],
+                status=row["status"],
+                file_size_bytes=row.get("file_size_bytes"),
+                error_message=row.get("error_message"),
+            )
+            for row in (r.data or [])
+        ]
+
+    def get_frame_count(self, video_id: str) -> int:
+        """Return number of frames for a video."""
+        r = self.client.table("video_frames").select("frame_id", count="exact").eq("video_id", video_id).execute()
+        return r.count or 0
+
     def delete_video(self, video_id: str) -> None:
         """Delete video row; DB cascade deletes video_frames and video_frame_embeddings."""
         self.client.table("videos").delete().eq("video_id", video_id).execute()

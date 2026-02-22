@@ -10,6 +10,7 @@ This directory contains SQL migration files for setting up the Supabase database
    - `001_create_chunks_table.sql` - Creates the document_chunks table and match_chunks function
    - `002_create_conversations_tables.sql` - Creates the conversations and turns tables
    - `003_create_video_tables.sql` - Creates videos, video_frames, video_frame_embeddings and match_video_frames (for Video Semantic Search)
+   - `005_create_image_tables.sql` - Creates images, image_embeddings and match_images (for Image Semantic Search)
 
 ## What Gets Created
 

@@ -99,6 +99,73 @@ class VideoSearchResponse(BaseModel):
     results: List["VideoSearchResultItem"] = Field(default_factory=list)
 
 
+# --- Image Semantic Search API models (separate from video/document RAG) ---
+
+
+class ImageUploadResponse(BaseModel):
+    """Response for POST /images/upload (202 Accepted)."""
+    image_id: str = Field(..., description="Unique image identifier")
+    job_id: Optional[str] = Field(None, description="Processing job id if async")
+    message: str = Field(..., description="Status message")
+    original_filename: str = Field(..., description="Original file name")
+
+
+class ImageStatusResponse(BaseModel):
+    """Response for GET /images/{image_id}/status."""
+    image_id: str
+    status: str = Field(..., description="pending | processing | processed | failed")
+    error: Optional[str] = Field(None, description="Error message if failed")
+
+
+class ImageSearchRequest(BaseModel):
+    """Request for POST /images/search."""
+    query: str = Field(..., min_length=1, max_length=1000)
+    top_k: int = Field(10, ge=1, le=50)
+
+
+class ImageSearchResultItem(BaseModel):
+    """Single image search result."""
+    image_id: str
+    image_path: str
+    thumbnail_url: str = Field(..., description="URL to fetch thumbnail image")
+    image_url: str = Field(..., description="URL to fetch original image")
+    similarity: float
+
+
+class ImageSearchResponse(BaseModel):
+    """Response for POST /images/search."""
+    results: List["ImageSearchResultItem"] = Field(default_factory=list)
+
+
+class ImageListItem(BaseModel):
+    """Info about a single image in the store."""
+    image_id: str
+    original_filename: str
+    status: str
+    file_size_bytes: Optional[int] = None
+
+
+class ImagesListResponse(BaseModel):
+    """Response for GET /images."""
+    images: List[ImageListItem] = Field(default_factory=list)
+    total_images: int = Field(0)
+
+
+class VideoListItem(BaseModel):
+    """Info about a single video in the store."""
+    video_id: str
+    original_filename: str
+    status: str
+    file_size_bytes: Optional[int] = None
+    frame_count: int = 0
+
+
+class VideosListResponse(BaseModel):
+    """Response for GET /videos."""
+    videos: List[VideoListItem] = Field(default_factory=list)
+    total_videos: int = Field(0)
+
+
 class DocumentInfo(BaseModel):
     """Info about a single document in the vector store."""
     document_name: str = Field(..., description="Document filename")

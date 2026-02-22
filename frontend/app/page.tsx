@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 
 // ── Intersection Observer hook for scroll animations ──
@@ -136,6 +136,63 @@ function FlowArrow() {
 // ══════════════════════════════════════════════
 //  MAIN PAGE
 // ══════════════════════════════════════════════
+// ── Docs dropdown button ──
+function DocsDropdown({ className = '' }: { className?: string }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={ref} className={`relative ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="rounded-2xl border border-slate-700/60 bg-neutral-950/80 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
+      >
+        Docs
+        <svg className={`ml-1.5 inline-block h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute left-1/2 z-50 mt-2 w-52 -translate-x-1/2 overflow-hidden rounded-2xl border border-slate-700/60 bg-neutral-950/95 shadow-2xl shadow-black/60 backdrop-blur-xl">
+          <Link
+            href="/upload"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 px-4 py-3 text-sm text-slate-300 transition hover:bg-slate-800/60 hover:text-white"
+          >
+            <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+            Upload doc
+          </Link>
+          <Link
+            href="/ask"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 border-t border-slate-800/40 px-4 py-3 text-sm text-slate-300 transition hover:bg-slate-800/60 hover:text-white"
+          >
+            <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            Search docs
+          </Link>
+          <Link
+            href="/docs"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 border-t border-slate-800/40 px-4 py-3 text-sm text-slate-300 transition hover:bg-slate-800/60 hover:text-white"
+          >
+            <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            View uploaded docs
+          </Link>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Home() {
   // Parallax effect on hero
   useEffect(() => {
@@ -169,16 +226,16 @@ export default function Home() {
           <RevealSection>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-slate-800/60 bg-neutral-950/80 px-4 py-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs uppercase tracking-[0.3em] text-slate-400">Vault &middot; RAG Pipeline</span>
+              <span className="text-xs uppercase tracking-[0.3em] text-slate-400">Vault</span>
             </div>
           </RevealSection>
 
           <RevealSection delay={100}>
             <h1 className="max-w-4xl text-5xl font-bold leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl">
-              PDFs and Videos.
+              PDFs, Videos, Images.
               <br />
               <span className="bg-gradient-to-r from-slate-200 via-slate-400 to-slate-600 bg-clip-text text-transparent">
-                One search to query both.
+                One search to query them all.
               </span>
             </h1>
           </RevealSection>
@@ -187,35 +244,25 @@ export default function Home() {
             <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
               Documents get chunked with contextual headers and embedded into
               768-d vectors. Videos get frame-extracted and CLIP-embedded into
-              512-d vectors. Both land in pgvector — searchable in seconds.
+              512-d vectors. Images are embedded with the same CLIP backbone.
+              All assets land in pgvector — searchable in seconds.
             </p>
           </RevealSection>
 
           <RevealSection delay={300}>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
               <Link
-                href="/upload"
+                href="/images"
                 className="rounded-2xl border border-slate-700/60 bg-neutral-950/80 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
               >
-                Upload
+                Images
               </Link>
-              <Link
-                href="/ask"
-                className="rounded-2xl bg-slate-100 px-8 py-3 text-sm font-semibold text-black transition hover:bg-white hover:shadow-lg hover:shadow-white/10"
-              >
-                Try it out
-              </Link>
+              <DocsDropdown />
               <Link
                 href="/videos"
                 className="rounded-2xl border border-slate-700/60 bg-neutral-950/80 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
               >
                 Videos
-              </Link>
-              <Link
-                href="/docs"
-                className="rounded-2xl border border-slate-700/60 bg-neutral-950/80 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
-              >
-                Docs
               </Link>
             </div>
           </RevealSection>
@@ -238,12 +285,13 @@ export default function Home() {
             METRICS BAR
         ════════════════════════════════════════ */}
         <section className="mx-auto max-w-6xl px-6 py-16">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Metric label="Text Embed" value="768-d" delay={0} />
-            <Metric label="Video Embed" value="512-d" delay={60} />
+            <Metric label="CLIP Embed" value="512-d" delay={60} />
             <Metric label="Chunk Size" value="300t" delay={120} />
             <Metric label="Frame Rate" value="1fps" delay={180} />
-            <Metric label="Vector Store" value="pgvec" delay={240} />
+            <Metric label="LLM Rerank" value="top-20" delay={240} />
+            <Metric label="Vector Store" value="pgvec" delay={300} />
           </div>
         </section>
 
@@ -257,9 +305,10 @@ export default function Home() {
               End-to-End Architecture
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-400">
-              Two parallel pipelines — document RAG and video semantic search — share
-              the same pgvector backbone. Text queries flow through 10 orchestrated stages;
-              video queries match frames via CLIP in a separate 5-stage pipeline.
+              Three parallel pipelines &mdash; document RAG, video semantic search, and
+              image semantic search &mdash; share the same pgvector backbone and a unified
+              CLIP embedding engine. Videos and images support LLM-powered query rewriting,
+              result reranking, and cross-modal image-to-video search.
             </p>
           </RevealSection>
 
@@ -719,8 +768,9 @@ export default function Home() {
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-400">
               A parallel pipeline for video content. Upload an MP4, MOV, or MKV &mdash;
-              frames are extracted, embedded with CLIP into 512-d vectors, and stored
-              in pgvector. Search any video by natural language to find the exact frame.
+              frames are extracted, CLIP-embedded into 512-d vectors, and stored in pgvector.
+              Search by text or upload a reference image. Llama 3.3 70B rewrites queries
+              and reranks results for production-grade recall.
             </p>
           </RevealSection>
 
@@ -793,6 +843,122 @@ export default function Home() {
               tags={['Text→Image', 'Seek-to-Frame', 'top_k']}
               delay={320}
             />
+            <FlowArrow />
+            <StageCard
+              number="16"
+              title="LLM Query Rewriting"
+              subtitle="Llama 3.3 70B expands queries into 3 alternative formulations"
+              details={[
+                'Original query rewritten via Groq into visually descriptive variants',
+                'Each variant embedded separately with CLIP and searched in parallel',
+                'Results merged and deduplicated across all query variants',
+                'Catches synonyms and phrasings the original query would miss',
+              ]}
+              tags={['Llama 70B', '3 Rewrites', 'Groq']}
+              delay={400}
+            />
+            <FlowArrow />
+            <StageCard
+              number="17"
+              title="LLM Result Reranking"
+              subtitle="Top-20 candidates reranked by semantic understanding"
+              details={[
+                'Collects top candidates from all query variants into a pool',
+                'LLM evaluates query intent against each frame&rsquo;s context',
+                'Reorders results by true relevance, not just cosine distance',
+                'Configurable candidate count via VIDEO_LLM_RERANK_CANDIDATES',
+              ]}
+              tags={['top-20', 'Semantic', 'Rerank']}
+              delay={480}
+            />
+            <FlowArrow />
+            <StageCard
+              number="18"
+              title="Image-to-Video Search"
+              subtitle="Upload a reference image to find matching video frames"
+              details={[
+                'Reference image embedded with CLIP into the same 512-d space',
+                'Optional text prompt blended with image embedding (0.3 weight)',
+                'Formula: blended = (1−w) × image_vec + w × text_vec',
+                'Enables "find frames that look like this photo" workflows',
+              ]}
+              tags={['Cross-Modal', '0.3 Blend', 'Hybrid']}
+              delay={560}
+            />
+          </div>
+        </section>
+
+        {/* ════════════════════════════════════════
+            IMAGE SEMANTIC SEARCH
+        ════════════════════════════════════════ */}
+        <section className="mx-auto max-w-5xl px-6 py-20">
+          <RevealSection>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Phase 4</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+              Image Semantic Search
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-400">
+              Upload JPG, PNG, or WebP images &mdash; each is embedded with the same
+              CLIP ViT-B-32 backbone into 512-d vectors and stored in pgvector. Search
+              by natural language to find visually matching images across your collection.
+            </p>
+          </RevealSection>
+
+          <div className="mt-12 space-y-0">
+            <StageCard
+              number="19"
+              title="Image Upload & Validation"
+              subtitle="File validation, sanitization, and async processing"
+              details={[
+                'Accepts JPG, PNG, WebP — up to 50 MB per file',
+                'Filename sanitized against path traversal attacks',
+                'Returns 202 Accepted with image_id and job_id immediately',
+                'Background job handles embedding without blocking the API',
+              ]}
+              tags={['50 MB', 'Async', 'JPG/PNG/WebP']}
+            />
+            <FlowArrow />
+            <StageCard
+              number="20"
+              title="CLIP Image Embedding"
+              subtitle="Whole-image embedding via shared clip-ViT-B-32 engine"
+              details={[
+                'Same CLIP backbone as video frames — shared 512-d vector space',
+                'Two modes: local (sentence-transformers) or server (HuggingFace API)',
+                'Automatic fallback from server to local on API failure',
+                'No frame extraction needed — the entire image is embedded directly',
+              ]}
+              tags={['CLIP', '512-d', 'Shared Engine']}
+              delay={80}
+            />
+            <FlowArrow />
+            <StageCard
+              number="21"
+              title="Image Vector Storage"
+              subtitle="Supabase pgvector with HNSW index and cascade deletes"
+              details={[
+                'Separate table: image_embeddings with vector(512)',
+                'HNSW index for sub-linear cosine similarity search',
+                'RPC function: match_images() with configurable threshold',
+                'Cascade delete: removing an image drops its embedding automatically',
+              ]}
+              tags={['pgvector', 'HNSW', 'Cosine']}
+              delay={160}
+            />
+            <FlowArrow />
+            <StageCard
+              number="22"
+              title="Natural Language Image Search"
+              subtitle="Type a query, find visually matching images"
+              details={[
+                'Query text embedded with CLIP into the same 512-d space',
+                'Cosine similarity ranks images by semantic relevance',
+                'Results include thumbnails and similarity percentage',
+                'Click a result to view the full-resolution image in a lightbox',
+              ]}
+              tags={['Text→Image', 'top_k', 'Lightbox']}
+              delay={240}
+            />
           </div>
         </section>
 
@@ -812,13 +978,14 @@ export default function Home() {
               { name: 'FastAPI', role: 'API Gateway', detail: 'Async ASGI with Uvicorn' },
               { name: 'PyMuPDF', role: 'PDF Processing', detail: 'Page extraction + font metadata' },
               { name: 'HuggingFace', role: 'Text Embeddings', detail: 'all-mpnet-base-v2 (768-d)' },
+              { name: 'CLIP ViT-B-32', role: 'Visual Embeddings', detail: 'Shared backbone for videos + images (512-d)' },
               { name: 'OpenCV', role: 'Frame Extraction', detail: 'Video → JPEG frames at 1 fps' },
-              { name: 'CLIP ViT-B-32', role: 'Video Embeddings', detail: 'Image + text aligned (512-d)' },
               { name: 'Supabase', role: 'Vector Store', detail: 'pgvector with HNSW index' },
-              { name: 'Groq', role: 'LLM Inference', detail: 'Llama 3.1 8B & 3.3 70B' },
+              { name: 'Groq', role: 'LLM Inference', detail: 'Llama 3.1 8B & 3.3 70B + query rewrite/rerank' },
               { name: 'tiktoken', role: 'Token Counting', detail: 'o200k_base encoding' },
               { name: 'Next.js', role: 'Frontend', detail: 'React with Tailwind CSS' },
               { name: 'Pydantic', role: 'Validation', detail: 'Request/response schemas' },
+              { name: 'PIL / Pillow', role: 'Image Processing', detail: 'Image loading for CLIP embedding' },
               { name: 'httpx', role: 'HTTP Client', detail: 'Async requests with retry' },
             ].map((tech, i) => (
               <RevealSection key={tech.name} delay={i * 60}>
@@ -859,12 +1026,16 @@ export default function Home() {
                       ['Chunk Size', '300 tokens', 'Context granularity per chunk'],
                       ['Chunk Overlap', '50 tokens', 'Continuity between adjacent chunks'],
                       ['Text Embed Dim', '768', 'all-mpnet-base-v2 vector output'],
-                      ['Video Embed Dim', '512', 'CLIP ViT-B-32 vector output'],
+                      ['CLIP Embed Dim', '512', 'Shared ViT-B-32 for videos + images'],
                       ['Frame Interval', '1.0s', 'Extract 1 frame per second'],
-                      ['Max Video Size', '500 MB', 'Upload file size limit'],
+                      ['Max Video Size', '500 MB', 'Video upload file size limit'],
+                      ['Max Image Size', '50 MB', 'Image upload file size limit'],
                       ['Retrieval top_k', '5', 'Max chunks from vector search'],
                       ['Relevance Threshold', '0.2', 'Min similarity score to keep'],
                       ['Dynamic K-Cutoff', '0.8×', 'Adaptive filtering multiplier'],
+                      ['LLM Rewrite Count', '3', 'Query variants for video search'],
+                      ['LLM Rerank Pool', '20', 'Candidate frames for reranking'],
+                      ['Image Prompt Weight', '0.3', 'Text vs image blend for hybrid search'],
                       ['LLM Temperature', '0.7', 'Generation randomness control'],
                       ['Max Tokens', '500', 'Response length hard limit'],
                       ['History Turns', '3', 'Multi-turn conversation window'],
@@ -1002,34 +1173,23 @@ export default function Home() {
               See Vault in action
             </h2>
             <p className="mt-4 max-w-md text-sm text-slate-400">
-              Upload a PDF or video, ask a question, and watch both pipelines
-              execute — text chunks and video frames, embedded and retrieved
+              Upload a PDF, image, or video, ask a question, and watch the pipelines
+              execute — text chunks and visual assets, embedded and retrieved
               with live telemetry on every response.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link
-                href="/upload"
+                href="/images"
                 className="rounded-2xl border border-slate-700/60 bg-neutral-950/80 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
               >
-                Upload
+                Images
               </Link>
-              <Link
-                href="/ask"
-                className="rounded-2xl bg-slate-100 px-10 py-3.5 text-sm font-semibold text-black transition hover:bg-white hover:shadow-lg hover:shadow-white/10"
-              >
-                Launch Vault
-              </Link>
+              <DocsDropdown />
               <Link
                 href="/videos"
                 className="rounded-2xl border border-slate-700/60 bg-neutral-950/80 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
               >
                 Videos
-              </Link>
-              <Link
-                href="/docs"
-                className="rounded-2xl border border-slate-700/60 bg-neutral-950/80 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600/80 hover:bg-neutral-900 hover:text-white"
-              >
-                Docs
               </Link>
             </div>
           </ZoomSection>
