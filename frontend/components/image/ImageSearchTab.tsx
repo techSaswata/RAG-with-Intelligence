@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import ImageResultGrid, { type ImageResult } from './ImageResultGrid'
 import ImageViewerModal from './ImageViewerModal'
+import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
 
 interface ImageSearchTabProps {
   apiBaseUrl: string
@@ -22,12 +23,16 @@ export default function ImageSearchTab({ apiBaseUrl, apiKey }: ImageSearchTabPro
     setError(null)
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (apiKey) headers['X-Api-Key'] = apiKey
+    const requestHeaders = withNgrokHeaders(headers, apiBaseUrl)
     try {
-      const res = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/images/search`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ query: query.trim(), top_k: 12 }),
-      })
+      const res = await fetch(
+        withNgrokBypass(`${apiBaseUrl.replace(/\/$/, '')}/images/search`, apiBaseUrl),
+        {
+          method: 'POST',
+          headers: requestHeaders,
+          body: JSON.stringify({ query: query.trim(), top_k: 12 }),
+        }
+      )
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || res.statusText)
@@ -46,6 +51,7 @@ export default function ImageSearchTab({ apiBaseUrl, apiKey }: ImageSearchTabPro
     let imageUrl = r.image_url.startsWith('http')
       ? r.image_url
       : `${apiBaseUrl.replace(/\/$/, '')}${r.image_url}`
+    imageUrl = withNgrokBypass(imageUrl, apiBaseUrl)
     if (apiKey) {
       const joiner = imageUrl.includes('?') ? '&' : '?'
       imageUrl = `${imageUrl}${joiner}api_key=${encodeURIComponent(apiKey)}`

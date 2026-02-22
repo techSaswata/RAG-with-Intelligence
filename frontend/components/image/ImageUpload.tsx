@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
+import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
 
 const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp']
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -51,12 +52,13 @@ export default function ImageUpload({ apiBaseUrl, apiKey }: ImageUploadProps) {
     form.append('file', item.file)
     const headers: Record<string, string> = {}
     if (apiKey) headers['X-Api-Key'] = apiKey
+    const requestHeaders = withNgrokHeaders(headers, apiBaseUrl)
 
     try {
-      const res = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/images/upload`, {
+      const res = await fetch(withNgrokBypass(`${apiBaseUrl.replace(/\/$/, '')}/images/upload`, apiBaseUrl), {
         method: 'POST',
         body: form,
-        headers,
+        headers: requestHeaders,
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -85,11 +87,12 @@ export default function ImageUpload({ apiBaseUrl, apiKey }: ImageUploadProps) {
   const pollStatus = (imageId: string, itemId: string) => {
     const headers: Record<string, string> = {}
     if (apiKey) headers['X-Api-Key'] = apiKey
+    const requestHeaders = withNgrokHeaders(headers, apiBaseUrl)
     const interval = setInterval(async () => {
       try {
         const res = await fetch(
-          `${apiBaseUrl.replace(/\/$/, '')}/images/${imageId}/status`,
-          { headers }
+          withNgrokBypass(`${apiBaseUrl.replace(/\/$/, '')}/images/${imageId}/status`, apiBaseUrl),
+          { headers: requestHeaders }
         )
         if (!res.ok) return
         const data = await res.json()

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import ApiMissingNotice from '@/components/ApiMissingNotice'
+import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
 
 // ── Reuse scroll reveal from landing page ──
 function useScrollReveal() {
@@ -202,7 +203,9 @@ export default function DocsPage() {
 
     try {
       setError(null)
-      const response = await fetch(`${API_URL}/documents`)
+      const response = await fetch(withNgrokBypass(`${API_URL}/documents`, API_URL), {
+        headers: withNgrokHeaders({}, API_URL),
+      })
       if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`)
       const data = await response.json()
       setDocuments(data.documents || [])
@@ -229,8 +232,8 @@ export default function DocsPage() {
 
     try {
       const response = await fetch(
-        `${API_URL}/documents/${encodeURIComponent(deleteTarget.document_name)}`,
-        { method: 'DELETE' }
+        withNgrokBypass(`${API_URL}/documents/${encodeURIComponent(deleteTarget.document_name)}`, API_URL),
+        { method: 'DELETE', headers: withNgrokHeaders({}, API_URL) }
       )
 
       if (!response.ok) throw new Error(`Delete failed: ${response.statusText}`)

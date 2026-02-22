@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import ApiMissingNotice from '@/components/ApiMissingNotice'
+import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -63,8 +64,9 @@ export default function AskPage() {
         setIsWakingUp(true)
         const startTime = Date.now()
 
-        const response = await fetch(`${API_URL}/wake`, {
+        const response = await fetch(withNgrokBypass(`${API_URL}/wake`, API_URL), {
           method: 'GET',
+          headers: withNgrokHeaders({}, API_URL),
           signal: AbortSignal.timeout(30000) // 30 second timeout
         })
 
@@ -181,11 +183,9 @@ export default function AskPage() {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
 
-      const response = await fetch(`${API_URL}/query/stream`, {
+      const response = await fetch(withNgrokBypass(`${API_URL}/query/stream`, API_URL), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: withNgrokHeaders({ 'Content-Type': 'application/json' }, API_URL),
         body: JSON.stringify({
           question: userMessage,
           conversation_id: conversationId,
@@ -315,11 +315,9 @@ export default function AskPage() {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
 
-      const response = await fetch(`${API_URL}/query`, {
+    const response = await fetch(withNgrokBypass(`${API_URL}/query`, API_URL), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      headers: withNgrokHeaders({ 'Content-Type': 'application/json' }, API_URL),
         body: JSON.stringify({
           question: userMessage,
           conversation_id: conversationId,

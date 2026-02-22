@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import ApiMissingNotice from '@/components/ApiMissingNotice'
+import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
 
 // ── Reuse scroll reveal from landing page ──
 function useScrollReveal() {
@@ -386,9 +387,10 @@ export default function UploadPage() {
         ))
       }, 800)
 
-      const response = await fetch(`${API_URL}/upload`, {
+      const response = await fetch(withNgrokBypass(`${API_URL}/upload`, API_URL), {
         method: 'POST',
         body: formData,
+        headers: withNgrokHeaders({}, API_URL),
       })
 
       clearInterval(progressInterval)
