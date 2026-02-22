@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import ImageResultGrid, { type ImageResult } from './ImageResultGrid'
 import ImageViewerModal from './ImageViewerModal'
-import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
+import { withNgrokBypass, withNgrokHeaders, withNgrokMediaProxy } from '@/lib/ngrok'
 
 interface ImageSearchTabProps {
   apiBaseUrl: string
@@ -51,11 +51,11 @@ export default function ImageSearchTab({ apiBaseUrl, apiKey }: ImageSearchTabPro
     let imageUrl = r.image_url.startsWith('http')
       ? r.image_url
       : `${apiBaseUrl.replace(/\/$/, '')}${r.image_url}`
-    imageUrl = withNgrokBypass(imageUrl, apiBaseUrl)
     if (apiKey) {
       const joiner = imageUrl.includes('?') ? '&' : '?'
       imageUrl = `${imageUrl}${joiner}api_key=${encodeURIComponent(apiKey)}`
     }
+    imageUrl = withNgrokMediaProxy(imageUrl, apiBaseUrl)
     setViewer({ imageUrl })
   }
 

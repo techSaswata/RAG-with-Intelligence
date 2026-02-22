@@ -6,9 +6,20 @@ export const withNgrokBypass = (url: string, baseUrl?: string) => {
   if (!url) return url
   const target = baseUrl || url
   if (!target || !isNgrokUrl(target)) return url
-  if (url.includes('ngrok-skip-browser-warning=')) return url
-  const joiner = url.includes('?') ? '&' : '?'
-  return `${url}${joiner}ngrok-skip-browser-warning=true`
+  return url
+}
+
+export const withNgrokMediaProxy = (url: string, baseUrl?: string) => {
+  if (!url) return url
+  const target = baseUrl || url
+  if (!target || !isNgrokUrl(target)) return url
+  try {
+    const parsed = baseUrl ? new URL(url, baseUrl) : new URL(url)
+    const path = parsed.pathname.replace(/^\/+/, '')
+    return `/api/ngrok-proxy/${path}${parsed.search}`
+  } catch {
+    return url
+  }
 }
 
 export const withNgrokHeaders = (headers: Record<string, string>, baseUrl?: string) => {

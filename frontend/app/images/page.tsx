@@ -5,7 +5,7 @@ import Link from 'next/link'
 import ImageUpload from '@/components/image/ImageUpload'
 import ImageSearchTab from '@/components/image/ImageSearchTab'
 import ApiMissingNotice from '@/components/ApiMissingNotice'
-import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
+import { withNgrokBypass, withNgrokHeaders, withNgrokMediaProxy } from '@/lib/ngrok'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 const IMAGE_API_KEY = process.env.NEXT_PUBLIC_IMAGE_API_KEY || ''
@@ -138,7 +138,7 @@ function ManageImagesTab() {
   const resolveUrl = (url: string) => {
     if (!url) return ''
     const full = url.startsWith('http') ? url : `${API_URL.replace(/\/$/, '')}${url}`
-    return withApiKey(withNgrokBypass(full, API_URL))
+    return withNgrokMediaProxy(withApiKey(full), API_URL)
   }
 
   const fetchImages = useCallback(async () => {

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import FrameResultGrid, { type FrameResult } from './FrameResultGrid'
 import VideoPlayerWithSeek from './VideoPlayerWithSeek'
-import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
+import { withNgrokBypass, withNgrokHeaders, withNgrokMediaProxy } from '@/lib/ngrok'
 
 interface VideoSearchTabProps {
   apiBaseUrl: string
@@ -51,11 +51,11 @@ export default function VideoSearchTab({ apiBaseUrl, apiKey }: VideoSearchTabPro
     let videoUrl = r.video_url.startsWith('http')
       ? r.video_url
       : `${apiBaseUrl.replace(/\/$/, '')}${r.video_url}`
-    videoUrl = withNgrokBypass(videoUrl, apiBaseUrl)
     if (apiKey) {
       const joiner = videoUrl.includes('?') ? '&' : '?'
       videoUrl = `${videoUrl}${joiner}api_key=${encodeURIComponent(apiKey)}`
     }
+    videoUrl = withNgrokMediaProxy(videoUrl, apiBaseUrl)
     setPlayer({ videoUrl, timestampSec: r.timestamp_sec })
   }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { withNgrokBypass } from '@/lib/ngrok'
+import { withNgrokMediaProxy } from '@/lib/ngrok'
 
 export interface ImageResult {
   image_id: string
@@ -33,7 +33,7 @@ export default function ImageResultGrid({
     const url = r.thumbnail_url.startsWith('http')
       ? r.thumbnail_url
       : `${apiBaseUrl.replace(/\/$/, '')}${r.thumbnail_url}`
-    return withApiKey(withNgrokBypass(url, apiBaseUrl))
+    return withApiKey(withNgrokMediaProxy(url, apiBaseUrl))
   }
 
   if (results.length === 0) {

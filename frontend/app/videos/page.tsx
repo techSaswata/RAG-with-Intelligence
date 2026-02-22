@@ -6,7 +6,7 @@ import VideoUpload from '@/components/video/VideoUpload'
 import VideoSearchTab from '@/components/video/VideoSearchTab'
 import VideoImageSearchTab from '@/components/video/VideoImageSearchTab'
 import ApiMissingNotice from '@/components/ApiMissingNotice'
-import { withNgrokBypass, withNgrokHeaders } from '@/lib/ngrok'
+import { withNgrokBypass, withNgrokHeaders, withNgrokMediaProxy } from '@/lib/ngrok'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 const VIDEO_API_KEY = process.env.NEXT_PUBLIC_VIDEO_API_KEY || ''
@@ -153,7 +153,7 @@ function ManageVideosTab() {
   const resolveUrl = (url: string) => {
     if (!url) return ''
     const full = url.startsWith('http') ? url : `${API_URL.replace(/\/$/, '')}${url}`
-    return withApiKey(withNgrokBypass(full, API_URL))
+    return withNgrokMediaProxy(withApiKey(full), API_URL)
   }
 
   const fetchVideos = useCallback(async () => {
