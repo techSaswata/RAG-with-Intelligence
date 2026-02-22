@@ -1,15 +1,18 @@
 """Main entry point for ClearPath RAG Chatbot API."""
 import logging
 import time
+import tempfile
+import os
+import shutil
 import tiktoken
 from typing import List
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from config import PORT, CORS_ORIGINS
-from models.api import QueryRequest, QueryResponse, ResponseMetadata, TokenUsage, Source
-from models.chunk import ScoredChunk
+from models.api import QueryRequest, QueryResponse, ResponseMetadata, TokenUsage, Source, UploadResponse, UploadFileResult
+from models.chunk import Chunk, ScoredChunk
 from services.model_router import ModelRouter
 from services.retrieval_engine import RetrievalEngine
 from services.llm_client import LLMClient, LLMClientError
@@ -18,6 +21,8 @@ from services.conversation_manager import ConversationManager
 from services.routing_logger import RoutingLogger
 from services.vector_store import VectorStore
 from services.embedding_model import EmbeddingModel
+from services.document_loader import DocumentLoader
+from services.chunking_engine import ChunkingEngine
 
 # Initialize logging
 logger = logging.getLogger(__name__)
@@ -45,6 +50,9 @@ llm_client: LLMClient = None
 output_evaluator: OutputEvaluator = None
 conversation_manager: ConversationManager = None
 routing_logger: RoutingLogger = None
+chunking_engine: ChunkingEngine = None
+vector_store_instance: VectorStore = None
+embedding_model_instance: EmbeddingModel = None
 tiktoken_encoder = None
 
 
@@ -53,22 +61,26 @@ async def startup_event():
     """Initialize services on startup."""
     global model_router, retrieval_engine, llm_client, output_evaluator
     global conversation_manager, routing_logger, tiktoken_encoder
-    
+    global chunking_engine, vector_store_instance, embedding_model_instance
+
     logger.info("Initializing ClearPath RAG Chatbot services...")
-    
+
     try:
         # Initialize tiktoken encoder for Llama 3 token counting
         tiktoken_encoder = tiktoken.get_encoding("o200k_base")
         logger.info("Initialized tiktoken encoder (o200k_base)")
-        
+
         # Initialize services
         model_router = ModelRouter()
         logger.info("Initialized ModelRouter")
-        
-        embedding_model = EmbeddingModel()
-        vector_store = VectorStore(embedding_model)
-        retrieval_engine = RetrievalEngine(vector_store, embedding_model)
+
+        embedding_model_instance = EmbeddingModel()
+        vector_store_instance = VectorStore(embedding_model_instance)
+        retrieval_engine = RetrievalEngine(vector_store_instance, embedding_model_instance)
         logger.info("Initialized RetrievalEngine")
+
+        chunking_engine = ChunkingEngine()
+        logger.info("Initialized ChunkingEngine")
         
         llm_client = LLMClient()
         logger.info("Initialized LLMClient")
@@ -488,6 +500,127 @@ async def query_stream_endpoint(request: QueryRequest):
         }
     )
 
+
+
+@app.post("/upload", response_model=UploadResponse)
+async def upload_endpoint(files: List[UploadFile] = File(...)):
+    """
+    Upload PDF files and ingest them into the vector store.
+
+    Processes each file through the full ingestion pipeline:
+    1. PDF text extraction (PyMuPDF)
+    2. Contextual header injection (font-size analysis)
+    3. Token-aware chunking (300t / 50 overlap)
+    4. Embedding generation (all-mpnet-base-v2, 768-d)
+    5. Vector storage (Supabase pgvector)
+
+    Args:
+        files: One or more PDF files
+
+    Returns:
+        UploadResponse with per-file results and totals
+    """
+    start_time = time.time()
+    results: List[UploadFileResult] = []
+    total_chunks = 0
+    total_pages = 0
+
+    for upload_file in files:
+        # Validate file type
+        if not upload_file.filename or not upload_file.filename.lower().endswith('.pdf'):
+            results.append(UploadFileResult(
+                filename=upload_file.filename or "unknown",
+                status="error",
+                error="Only PDF files are accepted"
+            ))
+            continue
+
+        # Validate file size (50MB limit)
+        contents = await upload_file.read()
+        if len(contents) > 50 * 1024 * 1024:
+            results.append(UploadFileResult(
+                filename=upload_file.filename,
+                status="error",
+                error="File exceeds 50MB limit"
+            ))
+            continue
+
+        tmp_dir = None
+        try:
+            # Write to a temp directory using the original filename
+            # so ChunkingEngine._extract_headers() can find it at {dir}/{filename}
+            tmp_dir = tempfile.mkdtemp()
+            tmp_path = os.path.join(tmp_dir, upload_file.filename)
+            with open(tmp_path, "wb") as f:
+                f.write(contents)
+
+            # Step 1: Load PDF
+            loader = DocumentLoader(docs_directory=tmp_dir)
+            document = loader._load_pdf(tmp_path, upload_file.filename)
+            if not document or not document.pages:
+                results.append(UploadFileResult(
+                    filename=upload_file.filename,
+                    status="error",
+                    error="Could not extract text from PDF"
+                ))
+                continue
+
+            file_pages = len(document.pages)
+
+            # Step 2-3: Chunk with contextual headers
+            chunks = chunking_engine.chunk_documents([document], docs_directory=tmp_dir)
+
+            if not chunks:
+                results.append(UploadFileResult(
+                    filename=upload_file.filename,
+                    pages=file_pages,
+                    status="error",
+                    error="No chunks produced from document"
+                ))
+                continue
+
+            file_chunks = len(chunks)
+
+            # Step 4-5: Embed and store in batches
+            batch_size = 10
+            for i in range(0, len(chunks), batch_size):
+                batch = chunks[i:i + batch_size]
+                vector_store_instance.add_chunks(batch)
+
+            total_chunks += file_chunks
+            total_pages += file_pages
+
+            results.append(UploadFileResult(
+                filename=upload_file.filename,
+                pages=file_pages,
+                chunks=file_chunks,
+                status="success"
+            ))
+            logger.info(f"Ingested {upload_file.filename}: {file_pages} pages, {file_chunks} chunks")
+
+        except Exception as e:
+            logger.error(f"Error processing {upload_file.filename}: {e}", exc_info=True)
+            results.append(UploadFileResult(
+                filename=upload_file.filename,
+                status="error",
+                error=str(e)
+            ))
+        finally:
+            # Clean up temp directory
+            if tmp_dir and os.path.exists(tmp_dir):
+                try:
+                    shutil.rmtree(tmp_dir)
+                except OSError:
+                    pass
+
+    latency_ms = int((time.time() - start_time) * 1000)
+
+    return UploadResponse(
+        files=results,
+        total_chunks=total_chunks,
+        total_pages=total_pages,
+        latency_ms=latency_ms
+    )
 
 
 if __name__ == "__main__":

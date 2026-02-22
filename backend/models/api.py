@@ -38,3 +38,20 @@ class QueryResponse(BaseModel):
     metadata: ResponseMetadata = Field(..., description="Query processing metadata")
     sources: List[Source] = Field(default_factory=list, description="Source documents used")
     conversation_id: str = Field(..., description="Conversation ID for this exchange")
+
+
+class UploadFileResult(BaseModel):
+    """Result for a single uploaded file."""
+    filename: str = Field(..., description="Name of the uploaded file")
+    pages: int = Field(0, description="Number of pages extracted")
+    chunks: int = Field(0, description="Number of chunks created")
+    status: str = Field(..., description="Processing status: success or error")
+    error: Optional[str] = Field(None, description="Error message if processing failed")
+
+
+class UploadResponse(BaseModel):
+    """Response model for POST /upload endpoint."""
+    files: List[UploadFileResult] = Field(..., description="Results per file")
+    total_chunks: int = Field(..., description="Total chunks created across all files")
+    total_pages: int = Field(..., description="Total pages processed across all files")
+    latency_ms: int = Field(..., description="Total processing time in milliseconds")
