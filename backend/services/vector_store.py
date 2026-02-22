@@ -62,8 +62,8 @@ class VectorStore:
         logger.info(f"Adding {len(chunks)} chunks to vector store...")
         
         try:
-            # Extract texts for batch embedding
-            texts = [chunk.text for chunk in chunks]
+            # Extract texts for batch embedding (sanitize to remove null bytes)
+            texts = [self._sanitize_text(chunk.text) for chunk in chunks]
             
             # Generate embeddings in batch
             logger.debug(f"Generating embeddings for {len(texts)} chunks...")
@@ -71,14 +71,14 @@ class VectorStore:
             
             # Prepare records for insertion
             records = []
-            for chunk, embedding in zip(chunks, embeddings):
+            for chunk, embedding, text in zip(chunks, embeddings, texts):
                 record = {
                     "chunk_id": chunk.chunk_id,
-                    "text": chunk.text,
-                    "document_name": chunk.document_name,
+                    "text": text,
+                    "document_name": self._sanitize_text(chunk.document_name),
                     "page_number": chunk.page_number,
                     "token_count": chunk.token_count,
-                    "context_header": chunk.context_header,
+                    "context_header": self._sanitize_text(chunk.context_header),
                     "embedding": embedding
                 }
                 records.append(record)
@@ -93,6 +93,13 @@ class VectorStore:
             error_msg = f"Failed to add chunks to vector store: {str(e)}"
             logger.error(error_msg)
             raise RuntimeError(error_msg)
+
+    @staticmethod
+    def _sanitize_text(value: Optional[str]) -> Optional[str]:
+        """Remove null bytes that Postgres rejects."""
+        if value is None:
+            return None
+        return value.replace("\x00", "")
     
     def search(
         self,
