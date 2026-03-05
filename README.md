@@ -172,9 +172,12 @@ Multi-modal retrieval-augmented generation system. Three parallel search pipelin
 ---
 
 ## Demo
-[Deployment](https://everything-vault.vercel.app/)
-[Walkthorough](https://drive.google.com/file/d/1sufphQwaUxPrl2MzxPAf-b8O_ssTUmSI/view?usp=drive_link)
-[PPT](https://docs.google.com/presentation/d/1wGv5QD9BOoMnHOnYX0AUKUHFZ618a4zTm_zEgSIRAt4/edit?usp=sharing)
+- [Deployment](https://everything-vault.vercel.app/)
+- [Walkthrough](https://drive.google.com/file/d/1sufphQwaUxPrl2MzxPAf-b8O_ssTUmSI/view?usp=drive_link)
+- [PPT](https://docs.google.com/presentation/d/1wGv5QD9BOoMnHOnYX0AUKUHFZ618a4zTm_zEgSIRAt4/edit?usp=sharing)
+
+---
+
 ## Database Schema
 
 8 tables across 3 pipelines. All vector columns use HNSW indexes with `vector_cosine_ops`.
